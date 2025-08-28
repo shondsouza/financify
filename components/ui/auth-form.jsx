@@ -87,7 +87,7 @@ export function AuthForm({ onLogin }) {
             <div className="text-sm text-gray-600 mt-4 p-3 bg-gray-50 rounded">
               <p className="font-medium">Demo Accounts:</p>
               <p>Admin: admin@company.com</p>
-              <p>Team Leader: shon@company.com</p>
+              <p>Team Leader: john@company.com</p>
               <p>Password: (any text)</p>
             </div>
           </form>
