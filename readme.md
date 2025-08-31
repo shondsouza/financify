@@ -447,7 +447,6 @@ We welcome contributions! Here's how to get started:
 - 🔔 Real-time notifications system
 - 📄 PDF/Excel export functionality
 - 🔒 Advanced authentication system
-- 🎨 Custom themes and branding
 - 🌍 Multi-language support
 - 📈 Advanced wage calculation rules
 
