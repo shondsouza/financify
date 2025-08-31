@@ -17,7 +17,7 @@ import {
   Plus, Calendar, Users, DollarSign, Clock, CheckCircle, XCircle, 
   AlertTriangle, TrendingUp, MapPin, Building, Star, Eye,
   Filter, Download, RefreshCw, BarChart3, PieChart, Search,
-  Zap, Target, Award, Activity
+  Zap, Target, Award, Activity, Play, Square
 } from 'lucide-react'
 
 export function AdminDashboard({ user }) {
@@ -532,6 +532,7 @@ export function AdminDashboard({ user }) {
                       <TableHead className="font-semibold">Staff Assigned</TableHead>
                       <TableHead className="font-semibold">Hours</TableHead>
                       <TableHead className="font-semibold">Wage Calculation</TableHead>
+                      <TableHead className="font-semibold">Time Tracking</TableHead>
                       <TableHead className="font-semibold">Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -602,6 +603,30 @@ export function AdminDashboard({ user }) {
                                   <div>TL Commission: ₹{assignment.commission}</div>
                                 )}
                               </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              {assignment.entryTime && assignment.exitTime ? (
+                                <div className="text-xs text-gray-600">
+                                  <div className="flex items-center gap-1">
+                                    <Play className="h-3 w-3 text-green-600" />
+                                    {new Date(assignment.entryTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Square className="h-3 w-3 text-red-600" />
+                                    {new Date(assignment.exitTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                                  </div>
+                                  <Badge variant="outline" className="text-xs text-green-600 bg-green-50">
+                                    Completed
+                                  </Badge>
+                                </div>
+                              ) : (
+                                <div className="text-xs text-gray-500">
+                                  <Clock className="h-3 w-3" />
+                                  Pending
+                                </div>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell>

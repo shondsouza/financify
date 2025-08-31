@@ -57,6 +57,8 @@ CREATE TABLE staff_assignments (
   "staffAssigned" INTEGER NOT NULL,
   "assignedHours" DECIMAL(4,2) DEFAULT 7.0,
   "actualHours" DECIMAL(4,2),
+  "entryTime" TIMESTAMP WITH TIME ZONE,
+  "exitTime" TIMESTAMP WITH TIME ZONE,
   "basePay" DECIMAL(10,2) DEFAULT 350.00,
   "overtimePay" DECIMAL(10,2) DEFAULT 0.00,
   "totalWage" DECIMAL(10,2),

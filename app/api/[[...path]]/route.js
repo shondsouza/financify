@@ -189,6 +189,31 @@ async function handleRoute(request, { params }) {
       return handleCORS(NextResponse.json(data))
     }
 
+    // Update time tracking - PUT /api/assignments/[id]/time
+    if (route.match(/^\/assignments\/[^\/]+\/time$/) && method === 'PUT') {
+      const assignmentId = path[1]
+      const body = await request.json()
+      
+      if (!body.entryTime || !body.exitTime || !body.actualHours) {
+        return handleCORS(NextResponse.json(
+          { error: "Missing required fields: entryTime, exitTime, actualHours" },
+          { status: 400 }
+        ))
+      }
+
+      const timeData = {
+        entryTime: body.entryTime,
+        exitTime: body.exitTime,
+        actualHours: parseFloat(body.actualHours)
+      }
+
+      const { data, error } = await dbOperations.updateAssignmentTime(assignmentId, timeData)
+      if (error) {
+        return handleCORS(NextResponse.json({ error: error.message }, { status: 500 }))
+      }
+      return handleCORS(NextResponse.json(data))
+    }
+
     // Route not found
     return handleCORS(NextResponse.json(
       { error: `Route ${route} not found` },
