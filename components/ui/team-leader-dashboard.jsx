@@ -12,7 +12,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { CheckCircle, XCircle, Calendar, MapPin, Users, DollarSign, Clock, AlertTriangle, ThumbsUp, ThumbsDown, Play, Square, TrendingUp, BarChart3, PieChart, Activity } from 'lucide-react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, AreaChart, Area } from 'recharts'
+import dynamic from 'next/dynamic'
+
+// Dynamically import Recharts components to avoid SSR issues
+const RechartsComponents = dynamic(() => import('recharts'), { 
+  ssr: false,
+  loading: () => <div className="h-[250px] flex items-center justify-center text-gray-500">Loading charts...</div>
+})
 
 // Mock TimeTrackingForm component for demo
 const TimeTrackingForm = ({ assignment, onTimeUpdate, onClose }) => (
@@ -25,6 +31,243 @@ const TimeTrackingForm = ({ assignment, onTimeUpdate, onClose }) => (
     </div>
   </div>
 )
+
+// Chart wrapper component that handles dynamic imports
+const ChartWrapper = ({ children, fallback }) => {
+  const [isLoaded, setIsLoaded] = useState(false)
+  const [hasError, setHasError] = useState(false)
+
+  useEffect(() => {
+    // Simulate loading time for dynamic import
+    const timer = setTimeout(() => setIsLoaded(true), 100)
+    return () => clearTimeout(timer)
+  }, [])
+
+  if (hasError) {
+    return fallback || <div className="h-[250px] flex items-center justify-center text-gray-500">Chart failed to load</div>
+  }
+
+  if (!isLoaded) {
+    return <div className="h-[250px] flex items-center justify-center text-gray-500">Loading charts...</div>
+  }
+
+  try {
+    return children
+  } catch (error) {
+    console.error('Chart rendering error:', error)
+    setHasError(true)
+    return fallback || <div className="h-[250px] flex items-center justify-center text-gray-500">Chart failed to load</div>
+  }
+}
+
+// Individual chart components
+const AreaChartComponent = ({ data }) => {
+  const [components, setComponents] = useState(null)
+
+  useEffect(() => {
+    import('recharts').then((recharts) => {
+      setComponents({
+        ResponsiveContainer: recharts.ResponsiveContainer,
+        AreaChart: recharts.AreaChart,
+        Area: recharts.Area,
+        XAxis: recharts.XAxis,
+        YAxis: recharts.YAxis,
+        CartesianGrid: recharts.CartesianGrid,
+        Tooltip: recharts.Tooltip
+      })
+    })
+  }, [])
+
+  if (!components) {
+    return <div className="h-[250px] flex items-center justify-center text-gray-500">Loading chart...</div>
+  }
+
+  const { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } = components
+
+  return (
+    <ResponsiveContainer width="100%" height={250}>
+      <AreaChart data={data}>
+        <defs>
+          <linearGradient id="earningsGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+        <XAxis dataKey="month" stroke="#6b7280" />
+        <YAxis stroke="#6b7280" />
+        <Tooltip 
+          contentStyle={{
+            backgroundColor: 'white',
+            border: '1px solid #e5e7eb',
+            borderRadius: '8px',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+          }}
+          formatter={(value, name) => [
+            name === 'earnings' ? `₹${value.toLocaleString()}` : `${value}h`,
+            name === 'earnings' ? 'Earnings' : 'Hours'
+          ]}
+        />
+        <Area 
+          type="monotone" 
+          dataKey="earnings" 
+          stroke="#3b82f6" 
+          strokeWidth={3}
+          fill="url(#earningsGradient)" 
+        />
+      </AreaChart>
+    </ResponsiveContainer>
+  )
+}
+
+const PieChartComponent = ({ data }) => {
+  const [components, setComponents] = useState(null)
+
+  useEffect(() => {
+    import('recharts').then((recharts) => {
+      setComponents({
+        ResponsiveContainer: recharts.ResponsiveContainer,
+        PieChart: recharts.PieChart,
+        Pie: recharts.Pie,
+        Cell: recharts.Cell,
+        Tooltip: recharts.Tooltip
+      })
+    })
+  }, [])
+
+  if (!components) {
+    return <div className="h-[200px] flex items-center justify-center text-gray-500">Loading chart...</div>
+  }
+
+  const { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } = components
+
+  return (
+    <ResponsiveContainer width="100%" height={200}>
+      <PieChart>
+        <Pie
+          data={data}
+          dataKey="value"
+          nameKey="name"
+          cx="50%"
+          cy="50%"
+          outerRadius={70}
+          innerRadius={30}
+        >
+          {data.map((entry, index) => (
+            <Cell key={`cell-${index}`} fill={entry.color} />
+          ))}
+        </Pie>
+        <Tooltip formatter={(value, name) => [`${value} assignments`, name]} />
+      </PieChart>
+    </ResponsiveContainer>
+  )
+}
+
+const BarChartComponent = ({ data }) => {
+  const [components, setComponents] = useState(null)
+
+  useEffect(() => {
+    import('recharts').then((recharts) => {
+      setComponents({
+        ResponsiveContainer: recharts.ResponsiveContainer,
+        BarChart: recharts.BarChart,
+        Bar: recharts.Bar,
+        XAxis: recharts.XAxis,
+        YAxis: recharts.YAxis,
+        CartesianGrid: recharts.CartesianGrid,
+        Tooltip: recharts.Tooltip
+      })
+    })
+  }, [])
+
+  if (!components) {
+    return <div className="h-[250px] flex items-center justify-center text-gray-500">Loading chart...</div>
+  }
+
+  const { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } = components
+
+  return (
+    <ResponsiveContainer width="100%" height={250}>
+      <BarChart data={data}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+        <XAxis dataKey="name" stroke="#6b7280" fontSize={12} />
+        <YAxis stroke="#6b7280" />
+        <Tooltip 
+          contentStyle={{
+            backgroundColor: 'white',
+            border: '1px solid #e5e7eb',
+            borderRadius: '8px',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+          }}
+          formatter={(value, name) => [
+            name === 'earnings' ? `₹${value.toLocaleString()}` : `${value}h`,
+            name === 'earnings' ? 'Total Earnings' : 'Hours Worked'
+          ]}
+        />
+        <Bar dataKey="earnings" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  )
+}
+
+const LineChartComponent = ({ data }) => {
+  const [components, setComponents] = useState(null)
+
+  useEffect(() => {
+    import('recharts').then((recharts) => {
+      setComponents({
+        ResponsiveContainer: recharts.ResponsiveContainer,
+        LineChart: recharts.LineChart,
+        Line: recharts.Line,
+        XAxis: recharts.XAxis,
+        YAxis: recharts.YAxis,
+        CartesianGrid: recharts.CartesianGrid,
+        Tooltip: recharts.Tooltip
+      })
+    })
+  }, [])
+
+  if (!components) {
+    return <div className="h-[250px] flex items-center justify-center text-gray-500">Loading chart...</div>
+  }
+
+  const { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } = components
+
+  return (
+    <ResponsiveContainer width="100%" height={250}>
+      <LineChart data={data}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+        <XAxis dataKey="date" stroke="#6b7280" />
+        <YAxis yAxisId="earnings" orientation="left" stroke="#6b7280" />
+        <YAxis yAxisId="hours" orientation="right" stroke="#6b7280" />
+        <Tooltip 
+          contentStyle={{
+            backgroundColor: 'white',
+            border: '1px solid #e5e7eb',
+            borderRadius: '8px',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+          }}
+        />
+        <Line 
+          yAxisId="earnings" 
+          type="monotone" 
+          dataKey="earnings" 
+          stroke="#8b5cf6" 
+          strokeWidth={3}
+          dot={{ fill: '#8b5cf6', strokeWidth: 2, r: 4 }}
+        />
+        <Line 
+          yAxisId="hours" 
+          type="monotone" 
+          dataKey="hours" 
+          stroke="#f59e0b" 
+          strokeWidth={3}
+          dot={{ fill: '#f59e0b', strokeWidth: 2, r: 4 }}
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  )
+}
 
 export default function TeamLeaderDashboard() {
   // Mock user for demo
@@ -335,38 +578,9 @@ export default function TeamLeaderDashboard() {
               <CardDescription>Your earnings and hours over the last 3 months</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
-                <AreaChart data={monthlyEarnings}>
-                  <defs>
-                    <linearGradient id="earningsGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="month" stroke="#6b7280" />
-                  <YAxis stroke="#6b7280" />
-                  <Tooltip 
-                    contentStyle={{
-                      backgroundColor: 'white',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                    }}
-                    formatter={(value, name) => [
-                      name === 'earnings' ? `₹${value.toLocaleString()}` : `${value}h`,
-                      name === 'earnings' ? 'Earnings' : 'Hours'
-                    ]}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="earnings" 
-                    stroke="#3b82f6" 
-                    strokeWidth={3}
-                    fill="url(#earningsGradient)" 
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+              <ChartWrapper fallback={<div className="h-[250px] flex items-center justify-center text-gray-500">Chart loading...</div>}>
+                <AreaChartComponent data={monthlyEarnings} />
+              </ChartWrapper>
             </CardContent>
           </Card>
 
@@ -379,24 +593,9 @@ export default function TeamLeaderDashboard() {
               <CardDescription>Distribution of your assignments</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={200}>
-                <RechartsPieChart>
-                  <Pie
-                    data={statusDistribution}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={70}
-                    innerRadius={30}
-                  >
-                    {statusDistribution.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value, name) => [`${value} assignments`, name]} />
-                </RechartsPieChart>
-              </ResponsiveContainer>
+              <ChartWrapper fallback={<div className="h-[200px] flex items-center justify-center text-gray-500">Chart loading...</div>}>
+                <PieChartComponent data={statusDistribution} />
+              </ChartWrapper>
               <div className="mt-4 space-y-2">
                 {statusDistribution.map((item, index) => (
                   <div key={index} className="flex items-center justify-between text-sm">
@@ -702,26 +901,9 @@ export default function TeamLeaderDashboard() {
                     <CardDescription>Compare your earnings across different assignments</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <ResponsiveContainer width="100%" height={250}>
-                      <BarChart data={earningsChartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                        <XAxis dataKey="name" stroke="#6b7280" fontSize={12} />
-                        <YAxis stroke="#6b7280" />
-                        <Tooltip 
-                          contentStyle={{
-                            backgroundColor: 'white',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '8px',
-                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                          }}
-                          formatter={(value, name) => [
-                            name === 'earnings' ? `₹${value.toLocaleString()}` : `${value}h`,
-                            name === 'earnings' ? 'Total Earnings' : 'Hours Worked'
-                          ]}
-                        />
-                        <Bar dataKey="earnings" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
+                    <ChartWrapper fallback={<div className="h-[250px] flex items-center justify-center text-gray-500">Chart loading...</div>}>
+                      <BarChartComponent data={earningsChartData} />
+                    </ChartWrapper>
                   </CardContent>
                 </Card>
 
@@ -734,38 +916,9 @@ export default function TeamLeaderDashboard() {
                     <CardDescription>See how your time investment translates to earnings</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <ResponsiveContainer width="100%" height={250}>
-                      <LineChart data={earningsChartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                        <XAxis dataKey="date" stroke="#6b7280" />
-                        <YAxis yAxisId="earnings" orientation="left" stroke="#6b7280" />
-                        <YAxis yAxisId="hours" orientation="right" stroke="#6b7280" />
-                        <Tooltip 
-                          contentStyle={{
-                            backgroundColor: 'white',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '8px',
-                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                          }}
-                        />
-                        <Line 
-                          yAxisId="earnings" 
-                          type="monotone" 
-                          dataKey="earnings" 
-                          stroke="#8b5cf6" 
-                          strokeWidth={3}
-                          dot={{ fill: '#8b5cf6', strokeWidth: 2, r: 4 }}
-                        />
-                        <Line 
-                          yAxisId="hours" 
-                          type="monotone" 
-                          dataKey="hours" 
-                          stroke="#f59e0b" 
-                          strokeWidth={3}
-                          dot={{ fill: '#f59e0b', strokeWidth: 2, r: 4 }}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
+                    <ChartWrapper fallback={<div className="h-[250px] flex items-center justify-center text-gray-500">Chart loading...</div>}>
+                      <LineChartComponent data={earningsChartData} />
+                    </ChartWrapper>
                   </CardContent>
                 </Card>
               </div>
