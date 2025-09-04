@@ -22,6 +22,7 @@ import {
   Home, Settings, Bell, ChevronRight, ArrowUp, ArrowDown
 } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart as RechartsPieChart, Cell, AreaChart, Area, Pie } from 'recharts'
+import NotificationBanner from './notification-banner'
 
 export default function AdminDashboard() {
   // Get user from localStorage or use default admin user
@@ -119,7 +120,7 @@ export default function AdminDashboard() {
     { month: 'Apr', revenue: 380000, expenses: 190000 },
     { month: 'May', revenue: 520000, expenses: 270000 },
     { month: 'Jun', revenue: 600000, expenses: 310000 }
-  ]
+    ]
 
   const eventTypeData = [
     { name: 'Corporate Events', value: 35, color: '#3B82F6' },
@@ -276,6 +277,56 @@ export default function AdminDashboard() {
     }))
   }
 
+  const deleteEvent = async (eventId) => {
+    if (!confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
+      return
+    }
+
+    setLoading(true)
+    
+    try {
+      const { error } = await dbOperations.deleteEvent(eventId)
+      if (error) {
+        console.error('Failed to delete event:', error)
+        alert('Failed to delete event. Please try again.')
+        return
+      }
+
+      // Remove event from local state
+      const updatedEvents = events.filter(event => event.id !== eventId)
+      setEvents(updatedEvents)
+      
+      // Update stats
+      const deletedEvent = events.find(event => event.id === eventId)
+      if (deletedEvent) {
+        setStats(prev => ({
+          ...prev,
+          totalEvents: prev.totalEvents - 1,
+          openEvents: deletedEvent.status === 'open' ? prev.openEvents - 1 : prev.openEvents,
+          activeAssignments: deletedEvent.status === 'assigned' ? prev.activeAssignments - 1 : prev.activeAssignments
+        }))
+      }
+      
+      // Save to localStorage for team leader dashboard sync
+      try {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('admin_events', JSON.stringify(updatedEvents))
+          // Dispatch custom event to notify team leader dashboard
+          window.dispatchEvent(new CustomEvent('admin_events_updated'))
+        }
+      } catch (err) {
+        console.warn('Failed to save events to localStorage:', err)
+      }
+      
+      alert('Event deleted successfully!')
+    } catch (err) {
+      console.error('Error deleting event:', err)
+      alert('An error occurred while deleting the event.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const formatDate = (dateString) => {
     try {
     return new Date(dateString).toLocaleDateString('en-IN', {
@@ -332,6 +383,9 @@ export default function AdminDashboard() {
 
   return (
     <div className="flex h-screen bg-gray-50">
+      {/* Notification Banner */}
+      <NotificationBanner events={events} />
+      
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
@@ -670,8 +724,10 @@ export default function AdminDashboard() {
                         key={event.id} 
                         event={event} 
                         onViewResponses={loadEventResponses}
+                        onDelete={deleteEvent}
                         formatDate={formatDate}
                         getStatusBadge={getStatusBadge}
+                        loading={loading}
                       />
                     ))
                   )}
@@ -821,7 +877,7 @@ function StatCard({ title, value, subtitle, icon: Icon, color, progress, trend }
 }
 
 // Event Card Component
-function EventCard({ event, onViewResponses, formatDate, getStatusBadge }) {
+function EventCard({ event, onViewResponses, onDelete, formatDate, getStatusBadge, loading }) {
   return (
     <Card className="hover:shadow-xl transition-all duration-300 border-0 shadow-lg group">
       <CardHeader className="bg-gradient-to-r from-gray-50 to-white rounded-t-lg">
@@ -840,18 +896,30 @@ function EventCard({ event, onViewResponses, formatDate, getStatusBadge }) {
               <span className="capitalize font-medium text-blue-600">{event.eventType}</span>
             </CardDescription>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onViewResponses(event)}
-            disabled={event.status !== 'open'}
-            className="hover:bg-blue-50 hover:border-blue-300 flex-shrink-0 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Eye className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Responses</span>
-            <span className="sm:hidden">({event.responses?.length || 0})</span>
-            <span className="hidden sm:inline ml-1">({event.responses?.length || 0})</span>
-          </Button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onViewResponses(event)}
+              disabled={event.status !== 'open'}
+              className="hover:bg-blue-50 hover:border-blue-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Responses</span>
+              <span className="sm:hidden">({event.responses?.length || 0})</span>
+              <span className="hidden sm:inline ml-1">({event.responses?.length || 0})</span>
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => onDelete(event.id)}
+              disabled={loading || event.status === 'completed'}
+              className="hover:bg-red-600 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <X className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Delete</span>
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="pt-6">

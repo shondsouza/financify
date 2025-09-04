@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { CheckCircle, XCircle, Calendar, MapPin, Users, DollarSign, Clock, AlertTriangle, ThumbsUp, ThumbsDown, Play, Square, TrendingUp, BarChart3, PieChart, Activity } from 'lucide-react'
 import dynamic from 'next/dynamic'
+import NotificationBanner from './notification-banner'
 
 // Dynamically import Recharts components to avoid SSR issues
 const RechartsComponents = dynamic(() => import('recharts'), { 
@@ -391,7 +392,7 @@ export default function TeamLeaderDashboard() {
         window.removeEventListener('admin_events_updated', handleCustomUpdate)
       }
     }
-  }, [])
+    }, [])
 
   const [myAssignments, setMyAssignments] = useState([
     {
@@ -645,6 +646,9 @@ export default function TeamLeaderDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6">
+      {/* Notification Banner */}
+      <NotificationBanner events={events} />
+      
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
         <div className="text-center space-y-4 mb-8">
