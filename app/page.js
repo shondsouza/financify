@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { AuthForm } from '@/components/ui/auth-form'
 import { DashboardHeader } from '@/components/ui/dashboard-header'
-import { AdminDashboard } from '@/components/ui/admin-dashboard'
+import AdminDashboard from '@/components/ui/admin-dashboard'
 import TeamLeaderDashboard from '@/components/ui/team-leader-dashboard'
 
 export default function App() {

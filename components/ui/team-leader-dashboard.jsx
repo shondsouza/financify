@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { dbOperations } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -318,6 +319,80 @@ export default function TeamLeaderDashboard() {
     }
   ])
 
+  // Sync events with Admin's localStorage so TL sees newly created events
+  useEffect(() => {
+    try {
+      const saved = typeof window !== 'undefined' ? localStorage.getItem('admin_events') : null
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed)) {
+          setEvents(parsed)
+        }
+      }
+    } catch (err) {
+      // ignore malformed data
+    }
+
+    const handleStorage = (e) => {
+      if (e.key === 'admin_events') {
+        try {
+          const updated = e.newValue ? JSON.parse(e.newValue) : null
+          if (Array.isArray(updated)) {
+            // Merge responses from current state to preserve team leader responses
+            setEvents(prevEvents => {
+              const mergedEvents = updated.map(newEvent => {
+                const existingEvent = prevEvents.find(prev => prev.id === newEvent.id)
+                if (existingEvent && existingEvent.responses) {
+                  // Preserve existing responses from team leader's view
+                  return { ...newEvent, responses: existingEvent.responses }
+                }
+                return newEvent
+              })
+              return mergedEvents
+            })
+          }
+        } catch (err) {
+          // ignore
+        }
+      }
+    }
+
+    const handleCustomUpdate = () => {
+      try {
+        const savedNow = typeof window !== 'undefined' ? localStorage.getItem('admin_events') : null
+        if (savedNow) {
+          const parsedNow = JSON.parse(savedNow)
+          if (Array.isArray(parsedNow)) {
+            // Merge responses from current state to preserve team leader responses
+            setEvents(prevEvents => {
+              const mergedEvents = parsedNow.map(newEvent => {
+                const existingEvent = prevEvents.find(prev => prev.id === newEvent.id)
+                if (existingEvent && existingEvent.responses) {
+                  // Preserve existing responses from team leader's view
+                  return { ...newEvent, responses: existingEvent.responses }
+                }
+                return newEvent
+              })
+              return mergedEvents
+            })
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', handleStorage)
+      window.addEventListener('admin_events_updated', handleCustomUpdate)
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('storage', handleStorage)
+        window.removeEventListener('admin_events_updated', handleCustomUpdate)
+      }
+    }
+  }, [])
+
   const [myAssignments, setMyAssignments] = useState([
     {
       id: 1,
@@ -394,11 +469,82 @@ export default function TeamLeaderDashboard() {
   }
 
   const submitResponse = async () => {
-    if (responseData.available === null) return
-    
-    // Mock submission
-    console.log('Submitting response:', responseData)
-    setSelectedEvent(null)
+    if (responseData.available === null || !selectedEvent) return
+
+    try {
+      // Ensure team leader user exists before submitting response
+      const { data: teamLeaderUser, error: userError } = await dbOperations.ensureTeamLeaderUser()
+      if (userError) {
+        console.error('Failed to ensure team leader user:', userError)
+        console.error('Failed to submit response:', userError.message || 'Team leader user setup failed')
+        return
+      }
+
+      // First, save to database
+      const responsePayload = {
+        teamLeaderId: teamLeaderUser.id,
+        available: !!responseData.available,
+        staffCount: responseData.available ? parseInt(responseData.staffCount || '0', 10) : 0,
+        message: responseData.message || ''
+      }
+
+      const response = await fetch(`/api/events/${selectedEvent.id}/responses`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(responsePayload)
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to save response')
+      }
+
+      const savedResponse = await response.json()
+
+      // Then update local state with the saved response
+      const normalized = {
+        id: savedResponse.id,
+        teamLeaderId: user.id,
+        teamLeader: { name: user.name, email: `${user.name.split(' ').join('').toLowerCase()}@example.com` },
+        available: savedResponse.available,
+        staffCount: savedResponse.staffCount,
+        message: savedResponse.message || '',
+        respondedAt: savedResponse.respondedAt || new Date().toISOString()
+      }
+
+      const updatedEvents = events.map(ev => {
+        if (ev.id !== selectedEvent.id) return ev
+        const existingResponses = Array.isArray(ev.responses) ? ev.responses : []
+        const idx = existingResponses.findIndex(r => r.teamLeaderId === user.id)
+        if (idx >= 0) {
+          const merged = { ...existingResponses[idx], ...normalized, id: savedResponse.id }
+          const copy = [...existingResponses]
+          copy[idx] = merged
+          return { ...ev, responses: copy }
+        }
+        return { ...ev, responses: [...existingResponses, normalized] }
+      })
+
+      setEvents(updatedEvents)
+      
+      // Update localStorage for admin dashboard sync
+      try {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('admin_events', JSON.stringify(updatedEvents))
+          // Dispatch custom event to notify admin dashboard
+          window.dispatchEvent(new CustomEvent('admin_events_updated'))
+        }
+      } catch (_) {}
+      
+      // Response submitted successfully - no popup needed
+    } catch (error) {
+      console.error('Failed to submit response:', error)
+      // Error logged to console - no popup needed
+    } finally {
+      setSelectedEvent(null)
+    }
   }
 
   const handleTimeTracking = (assignment) => {

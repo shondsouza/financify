@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { dbOperations } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -10,28 +11,64 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Progress } from '@/components/ui/progress'
 import { 
   Plus, Calendar, Users, DollarSign, Clock, CheckCircle, XCircle, 
   AlertTriangle, TrendingUp, MapPin, Building, Star, Eye,
   Filter, Download, RefreshCw, BarChart3, PieChart, Search,
-  Zap, Target, Award, Activity, Play, Square
+  Zap, Target, Award, Activity, Play, Square, Menu, X,
+  Home, Settings, Bell, ChevronRight, ArrowUp, ArrowDown
 } from 'lucide-react'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart as RechartsPieChart, Cell, AreaChart, Area, Pie } from 'recharts'
 
-export function AdminDashboard({ user }) {
-  const [stats, setStats] = useState({})
+export default function AdminDashboard() {
+  // Get user from localStorage or use default admin user
+  const [user, setUser] = useState(null)
+  
+  // Load user from localStorage on component mount
+  useEffect(() => {
+    try {
+      const savedUser = typeof window !== 'undefined' ? localStorage.getItem('currentUser') : null
+      if (savedUser) {
+        const parsedUser = JSON.parse(savedUser)
+        setUser(parsedUser)
+      } else {
+        // Fallback to default admin user if not logged in
+        setUser({ id: 'admin-1', name: 'System Admin', email: 'admin@company.com', role: 'admin' })
+      }
+    } catch (err) {
+      console.warn('Failed to load user from localStorage:', err)
+      // Fallback to default admin user
+      setUser({ id: 'admin-1', name: 'System Admin', email: 'admin@company.com', role: 'admin' })
+    }
+  }, [])
+
+  const [stats, setStats] = useState({
+    totalEvents: 24,
+    openEvents: 8,
+    totalRevenue: 480000,
+    totalWages: 168000,
+    totalHours: 672,
+    activeAssignments: 12,
+    activeTeamLeaders: 15,
+    completionRate: 94
+  })
+  
   const [events, setEvents] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [fetching, setFetching] = useState(true)
+
+  const [loading, setLoading] = useState(false)
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState(null)
   const [eventResponses, setEventResponses] = useState([])
   const [activeTab, setActiveTab] = useState('overview')
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  // Form state
+  // Form state with validation
   const [formData, setFormData] = useState({
     title: '',
     client: '',
@@ -44,118 +81,203 @@ export function AdminDashboard({ user }) {
     requirements: ''
   })
 
+  const [formErrors, setFormErrors] = useState({})
+
+  // Fetch from Supabase
+  const refetchEvents = async () => {
+    setFetching(true)
+    const { data, error } = await dbOperations.getEvents()
+    if (error) {
+      console.error('Failed to fetch events:', error)
+    } else {
+      const eventsData = data || []
+      setEvents(eventsData)
+      
+      // Save to localStorage for team leader dashboard sync
+      try {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('admin_events', JSON.stringify(eventsData))
+        }
+      } catch (err) {
+        console.warn('Failed to save events to localStorage:', err)
+      }
+    }
+    setFetching(false)
+  }
   useEffect(() => {
-    loadDashboardData()
+    refetchEvents()
+    const vis = () => { if (document.visibilityState === 'visible') refetchEvents() }
+    document.addEventListener('visibilitychange', vis)
+    return () => document.removeEventListener('visibilitychange', vis)
   }, [])
 
-  const loadDashboardData = async () => {
-    try {
-      // Load stats and events
-      const [statsRes, eventsRes] = await Promise.all([
-        fetch('/api/dashboard/stats'),
-        fetch('/api/events')
-      ])
+  // Mock chart data
+  const revenueData = [
+    { month: 'Jan', revenue: 320000, expenses: 180000 },
+    { month: 'Feb', revenue: 420000, expenses: 220000 },
+    { month: 'Mar', revenue: 480000, expenses: 250000 },
+    { month: 'Apr', revenue: 380000, expenses: 190000 },
+    { month: 'May', revenue: 520000, expenses: 270000 },
+    { month: 'Jun', revenue: 600000, expenses: 310000 }
+  ]
 
-      if (statsRes.ok) {
-        const statsData = await statsRes.json()
-        setStats(statsData)
-      }
+  const eventTypeData = [
+    { name: 'Corporate Events', value: 35, color: '#3B82F6' },
+    { name: 'Weddings', value: 28, color: '#10B981' },
+    { name: 'Hotel Services', value: 22, color: '#F59E0B' },
+    { name: 'Conferences', value: 15, color: '#8B5CF6' }
+  ]
 
-      if (eventsRes.ok) {
-        const eventsData = await eventsRes.json()
-        setEvents(eventsData)
-      }
-    } catch (error) {
-      console.error('Error loading dashboard data:', error)
-    } finally {
-      setLoading(false)
+  const staffUtilizationData = [
+    { date: '2024-03-01', utilization: 85 },
+    { date: '2024-03-02', utilization: 92 },
+    { date: '2024-03-03', utilization: 78 },
+    { date: '2024-03-04', utilization: 95 },
+    { date: '2024-03-05', utilization: 88 },
+    { date: '2024-03-06', utilization: 91 },
+    { date: '2024-03-07', utilization: 87 }
+  ]
+
+  const teamLeaderPerformance = [
+    { name: 'Rajesh K.', events: 18, rating: 4.8, earnings: 45000 },
+    { name: 'Priya S.', events: 15, rating: 4.9, earnings: 42000 },
+    { name: 'Amit P.', events: 12, rating: 4.6, earnings: 38000 },
+    { name: 'Sneha M.', events: 14, rating: 4.7, earnings: 40000 }
+  ]
+
+  // Form validation
+  const validateForm = () => {
+    const errors = {}
+    if (!formData.title.trim()) errors.title = 'Event title is required'
+    if (!formData.client.trim()) errors.client = 'Client name is required'
+    if (!formData.eventType) errors.eventType = 'Event type is required'
+    if (!formData.eventDate) errors.eventDate = 'Event date is required'
+    if (!formData.location.trim()) errors.location = 'Location is required'
+    if (!formData.staffNeeded || formData.staffNeeded < 1) errors.staffNeeded = 'Valid staff count is required'
+    
+    // Date validation - must be future date
+    if (formData.eventDate && new Date(formData.eventDate) <= new Date()) {
+      errors.eventDate = 'Event date must be in the future'
     }
+
+    setFormErrors(errors)
+    return Object.keys(errors).length === 0
   }
 
   const handleCreateEvent = async (e) => {
     e.preventDefault()
     
-    try {
-      const response = await fetch('/api/events', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ...formData,
-          createdBy: user.id
-        })
-      })
+    if (!validateForm()) {
+      return
+    }
 
-      if (response.ok) {
-        setShowCreateForm(false)
-        setFormData({
-          title: '',
-          client: '',
-          eventType: '',
-          eventDate: '',
-          location: '',
-          staffNeeded: '',
-          expectedRevenue: '',
-          budgetAllocated: '',
-          requirements: ''
-        })
-        loadDashboardData()
+    setLoading(true)
+    
+    try {
+      // Ensure admin user exists before creating event
+      const { data: adminUser, error: adminError } = await dbOperations.ensureAdminUser()
+      if (adminError) {
+        console.error('Failed to ensure admin user:', adminError)
+        console.error('Failed to create event:', adminError.message || 'Admin user setup failed')
+        return
+      }
+
+      console.log('Creating event with payload:', formData)
+      const payload = {
+        title: formData.title.trim(),
+        client: formData.client.trim(),
+        eventType: formData.eventType,
+        eventDate: new Date(formData.eventDate).toISOString(),
+        location: formData.location.trim(),
+        staffNeeded: parseInt(formData.staffNeeded, 10),
+        expectedRevenue: formData.expectedRevenue ? parseInt(formData.expectedRevenue, 10) : null,
+        budgetAllocated: formData.budgetAllocated ? parseInt(formData.budgetAllocated, 10) : null,
+        requirements: formData.requirements.trim(),
+        status: 'open',
+        createdBy: adminUser?.id || 'admin-1'
+      }
+      console.log('Calling dbOperations.createEvent with:', payload)
+      const { data, error } = await dbOperations.createEvent(payload)
+      console.log('Create event result:', { data, error })
+      if (error) {
+        console.error('Failed to create event:', error)
+        console.error('Failed to create event:', error.message || 'Unknown error')
       } else {
-        console.error('Failed to create event')
-      }
-    } catch (error) {
-      console.error('Error creating event:', error)
-    }
-  }
-
-  const loadEventResponses = async (event) => {
-    setSelectedEvent(event)
-    try {
-      const response = await fetch(`/api/events/${event.id}/responses`)
-      if (response.ok) {
-        const data = await response.json()
-        setEventResponses(data)
-      }
-    } catch (error) {
-      console.error('Error loading event responses:', error)
-    }
-  }
-
-  const createAssignment = async (eventId, teamLeaderId, staffCount) => {
-    try {
-      const response = await fetch('/api/assignments', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          eventId,
-          teamLeaderId,
-          staffAssigned: staffCount,
-          assignedHours: 7.0
-        })
-      })
-
-      if (response.ok) {
-        // Update event status to assigned
-        await fetch(`/api/events/${eventId}/status`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ status: 'assigned' })
-        })
+        const updatedEvents = [data, ...events]
+        setEvents(updatedEvents)
+        setShowCreateForm(false)
+        resetForm()
+        // Update stats optimistically
+        setStats(prev => ({ ...prev, totalEvents: prev.totalEvents + 1, openEvents: prev.openEvents + 1 }))
         
-        loadDashboardData()
-        setSelectedEvent(null)
+        // Save to localStorage for team leader dashboard sync
+        try {
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('admin_events', JSON.stringify(updatedEvents))
+            // Dispatch custom event to notify team leader dashboard
+            window.dispatchEvent(new CustomEvent('admin_events_updated'))
+          }
+        } catch (err) {
+          console.warn('Failed to save events to localStorage:', err)
+        }
+        
+        // Event created successfully - no popup needed
       }
-    } catch (error) {
-      console.error('Error creating assignment:', error)
+    } finally {
+      setLoading(false)
     }
+  }
+
+  const resetForm = () => {
+      setFormData({
+        title: '',
+        client: '',
+        eventType: '',
+        eventDate: '',
+        location: '',
+        staffNeeded: '',
+        expectedRevenue: '',
+        budgetAllocated: '',
+        requirements: ''
+      })
+    setFormErrors({})
+  }
+
+  const loadEventResponses = (event) => {
+    setSelectedEvent(event)
+    setEventResponses(event.responses || [])
+  }
+
+  const createAssignment = (eventId, teamLeaderId, staffCount) => {
+    const updatedEvents = events.map(event => 
+      event.id === eventId 
+        ? { ...event, status: 'assigned' }
+        : event
+    )
+    setEvents(updatedEvents)
+    setSelectedEvent(null)
+    
+    // Save to localStorage for team leader dashboard sync
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('admin_events', JSON.stringify(updatedEvents))
+        // Dispatch custom event to notify team leader dashboard
+        window.dispatchEvent(new CustomEvent('admin_events_updated'))
+      }
+    } catch (err) {
+      console.warn('Failed to save events to localStorage:', err)
+    }
+    
+    // Update stats
+    setStats(prev => ({
+      ...prev,
+      openEvents: prev.openEvents - 1,
+      activeAssignments: prev.activeAssignments + 1
+    }))
   }
 
   const formatDate = (dateString) => {
+    try {
     return new Date(dateString).toLocaleDateString('en-IN', {
       year: 'numeric',
       month: 'short',
@@ -163,21 +285,24 @@ export function AdminDashboard({ user }) {
       hour: '2-digit',
       minute: '2-digit'
     })
+    } catch (error) {
+      return 'Invalid Date'
+    }
   }
 
   const getStatusBadge = (status) => {
     const statusConfig = {
-      open: { variant: 'outline', icon: Clock, text: 'Open', color: 'text-blue-600 bg-blue-50 border-blue-200' },
-      assigned: { variant: 'default', icon: Users, text: 'Assigned', color: 'text-green-600 bg-green-50 border-green-200' },
-      completed: { variant: 'default', icon: CheckCircle, text: 'Completed', color: 'text-purple-600 bg-purple-50 border-purple-200' },
-      cancelled: { variant: 'destructive', icon: XCircle, text: 'Cancelled', color: 'text-red-600 bg-red-50 border-red-200' }
+      open: { variant: 'outline', icon: Clock, text: 'Open', className: 'text-blue-700 bg-blue-50 border-blue-200 hover:bg-blue-100' },
+      assigned: { variant: 'default', icon: Users, text: 'Assigned', className: 'text-green-700 bg-green-100 border-green-200 hover:bg-green-200' },
+      completed: { variant: 'default', icon: CheckCircle, text: 'Completed', className: 'text-purple-700 bg-purple-100 border-purple-200 hover:bg-purple-200' },
+      cancelled: { variant: 'destructive', icon: XCircle, text: 'Cancelled', className: 'text-red-700 bg-red-100 border-red-200 hover:bg-red-200' }
     }
     
     const config = statusConfig[status] || statusConfig.open
     const Icon = config.icon
     
     return (
-      <Badge className={`${config.color} flex items-center gap-1 font-medium`}>
+      <Badge className={`${config.className} flex items-center gap-1 font-medium px-3 py-1 transition-colors`}>
         <Icon className="h-3 w-3" />
         {config.text}
       </Badge>
@@ -192,752 +317,1086 @@ export function AdminDashboard({ user }) {
     return matchesSearch && matchesFilter
   })
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
-        <span className="ml-3 text-gray-600">Loading dashboard...</span>
-      </div>
-    )
-  }
+  // Close sidebar on mobile when clicking outside and listen for resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setSidebarOpen(false)
+      }
+    }
+    window.addEventListener('resize', handleResize)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [])
 
   return (
-    <div className="space-y-8 p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
-      {/* Welcome Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Welcome back, {user?.name}!</h1>
-            <p className="text-blue-100 text-lg">Here's what's happening with your workforce today.</p>
+    <div className="flex h-screen bg-gray-50">
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" 
+            onClick={() => setSidebarOpen(false)} 
+          />
+          <div className="fixed left-0 top-0 h-full w-64 bg-white shadow-xl transform transition-transform">
+            <SidebarContent setSidebarOpen={setSidebarOpen} activeTab={activeTab} setActiveTab={setActiveTab} />
           </div>
-          <div className="flex items-center space-x-4">
-            <Button 
-              onClick={() => setShowCreateForm(true)} 
-              className="bg-white text-blue-600 hover:bg-blue-50 font-semibold shadow-lg"
-              size="lg"
-            >
-              <Plus className="h-5 w-5 mr-2" />
-              Create New Event
+        </div>
+      )}
+
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 lg:z-40">
+        <SidebarContent activeTab={activeTab} setActiveTab={setActiveTab} />
+      </div>
+
+      {/* Main Content */}
+      <div className="flex flex-1 flex-col lg:pl-64">
+        {/* Mobile Header */}
+        <div className="lg:hidden bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-30">
+          <div className="flex items-center justify-between">
+            <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(true)}>
+              <Menu className="h-5 w-5" />
+              <span className="sr-only">Open sidebar</span>
             </Button>
-            <Button 
-              variant="outline" 
-              className="border-white text-white hover:bg-white hover:text-blue-600"
-              onClick={loadDashboardData}
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
+            <h1 className="text-lg font-semibold">Admin Dashboard</h1>
+            <Button variant="ghost" size="sm">
+              <Bell className="h-5 w-5" />
+              <span className="sr-only">Notifications</span>
             </Button>
           </div>
         </div>
-      </div>
 
-      {/* Enhanced Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="hover:shadow-lg transition-all duration-300 border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-medium text-blue-800">Total Events</CardTitle>
-            <div className="p-2 bg-blue-500 rounded-lg">
-              <Calendar className="h-5 w-5 text-white" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-blue-900 mb-1">{stats.totalEvents || 0}</div>
-            <div className="flex items-center space-x-2">
-              <Progress value={(stats.openEvents / stats.totalEvents) * 100 || 0} className="flex-1 h-2" />
-              <span className="text-xs text-blue-700 font-medium">{stats.openEvents || 0} open</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-lg transition-all duration-300 border-0 shadow-md bg-gradient-to-br from-green-50 to-green-100">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-medium text-green-800">Expected Revenue</CardTitle>
-            <div className="p-2 bg-green-500 rounded-lg">
-              <TrendingUp className="h-5 w-5 text-white" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-green-900 mb-1">₹{stats.totalRevenue?.toLocaleString() || 0}</div>
-            <p className="text-xs text-green-700 flex items-center">
-              <Target className="h-3 w-3 mr-1" />
-              Total projected income
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-lg transition-all duration-300 border-0 shadow-md bg-gradient-to-br from-purple-50 to-purple-100">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-medium text-purple-800">Total Wages</CardTitle>
-            <div className="p-2 bg-purple-500 rounded-lg">
-              <Users className="h-5 w-5 text-white" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-purple-900 mb-1">₹{stats.totalWages?.toLocaleString() || 0}</div>
-            <p className="text-xs text-purple-700 flex items-center">
-              <Activity className="h-3 w-3 mr-1" />
-              {stats.activeAssignments || 0} active assignments
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-lg transition-all duration-300 border-0 shadow-md bg-gradient-to-br from-orange-50 to-orange-100">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-medium text-orange-800">Total Hours</CardTitle>
-            <div className="p-2 bg-orange-500 rounded-lg">
-              <Clock className="h-5 w-5 text-white" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-orange-900 mb-1">{stats.totalHours || 0}</div>
-            <p className="text-xs text-orange-700 flex items-center">
-              <Zap className="h-3 w-3 mr-1" />
-              Hours worked this period
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Enhanced Main Content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="bg-white shadow-sm border rounded-lg p-1 h-12">
-          <TabsTrigger value="overview" className="data-[state=active]:bg-blue-500 data-[state=active]:text-white font-medium px-6">
-            <BarChart3 className="h-4 w-4 mr-2" />
-            Overview
-          </TabsTrigger>
-          <TabsTrigger value="events" className="data-[state=active]:bg-blue-500 data-[state=active]:text-white font-medium px-6">
-            <Calendar className="h-4 w-4 mr-2" />
-            Events Management
-          </TabsTrigger>
-          <TabsTrigger value="assignments" className="data-[state=active]:bg-blue-500 data-[state=active]:text-white font-medium px-6">
-            <Users className="h-4 w-4 mr-2" />
-            Assignments & Wages
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="lg:col-span-2 shadow-md border-0">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <PieChart className="h-5 w-5 text-blue-600" />
-                  Recent Activity
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {events.slice(0, 5).map((event) => (
-                    <div key={event.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                        <div>
-                          <p className="font-medium">{event.title}</p>
-                          <p className="text-sm text-gray-600">{event.client}</p>
-                        </div>
-                      </div>
-                      {getStatusBadge(event.status)}
-                    </div>
-                  ))}
+        {/* Main Content Area */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="p-4 lg:p-8 space-y-6 lg:space-y-8 max-w-7xl">
+            {/* Welcome Section */}
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-6 lg:p-8 text-white shadow-xl">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div>
+                  <h1 className="text-2xl lg:text-3xl font-bold mb-2">Welcome back, {user?.name}!</h1>
+                  <p className="text-blue-100 text-base lg:text-lg">Here's what's happening with your workforce today.</p>
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-md border-0">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Award className="h-5 w-5 text-green-600" />
-                  Quick Stats
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Completion Rate</span>
-                    <span className="text-lg font-bold text-green-600">94%</span>
-                  </div>
-                  <Progress value={94} className="h-2" />
-                  
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Average Response Time</span>
-                    <span className="text-lg font-bold text-blue-600">2.3h</span>
-                  </div>
-                  
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Active Team Leaders</span>
-                    <span className="text-lg font-bold text-purple-600">{stats.activeTeamLeaders || 12}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="events" className="space-y-6">
-          {/* Enhanced Search and Filter Section */}
-          <Card className="shadow-md border-0">
-            <CardContent className="pt-6">
-              <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-                <div className="relative flex-1 max-w-md">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <Input
-                    placeholder="Search events, clients, or locations..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 h-11 border-gray-200 focus:border-blue-500"
-                  />
-                </div>
-                <div className="flex items-center space-x-3">
-                  <Select value={filterStatus} onValueChange={setFilterStatus}>
-                    <SelectTrigger className="w-40 h-11">
-                      <SelectValue placeholder="Filter by status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="open">Open</SelectItem>
-                      <SelectItem value="assigned">Assigned</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button variant="outline" size="icon" className="h-11 w-11">
-                    <Download className="h-4 w-4" />
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                  <Button 
+                    onClick={() => setShowCreateForm(true)} 
+                    className="bg-white text-blue-600 hover:bg-blue-50 font-semibold shadow-lg transition-all hover:shadow-xl"
+                    size="lg"
+                  >
+                    <Plus className="h-5 w-5 mr-2" />
+                    Create Event
                   </Button>
+                  <Button 
+                    variant="outline" 
+                    className="border-white text-white hover:bg-white hover:text-blue-600 transition-all"
+                    onClick={() => window.location.reload()}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6">
+              <StatCard
+                title="Total Events"
+                value={stats.totalEvents}
+                subtitle={`${stats.openEvents} open`}
+                icon={Calendar}
+                color="blue"
+                progress={(stats.openEvents / stats.totalEvents) * 100}
+              />
+              <StatCard
+                title="Expected Revenue"
+                value={`₹${stats.totalRevenue?.toLocaleString('en-IN')}`}
+                subtitle="Total projected income"
+                icon={TrendingUp}
+                color="green"
+                trend={{ value: 12, isPositive: true }}
+              />
+              <StatCard
+                title="Total Wages"
+                value={`₹${stats.totalWages?.toLocaleString('en-IN')}`}
+                subtitle={`${stats.activeAssignments} active assignments`}
+                icon={Users}
+                color="purple"
+              />
+              <StatCard
+                title="Total Hours"
+                value={stats.totalHours}
+                subtitle="Hours worked this period"
+                icon={Clock}
+                color="orange"
+              />
+            </div>
+
+            {/* Main Tabs Content */}
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+              <div className="hidden">
+                <TabsList className="bg-white shadow-sm border rounded-lg p-1 h-12">
+                  <TabsTrigger value="overview">Overview</TabsTrigger>
+                  <TabsTrigger value="events">Events</TabsTrigger>
+                  <TabsTrigger value="assignments">Assignments</TabsTrigger>
+                </TabsList>
+              </div>
+
+              <TabsContent value="overview" className="space-y-6">
+                {/* Charts Section */}
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                  <Card className="shadow-lg border-0 hover:shadow-xl transition-shadow">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <BarChart3 className="h-5 w-5 text-blue-600" />
+                        Revenue vs Expenses
+                      </CardTitle>
+                      <CardDescription>Monthly comparison of revenue and operational costs</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={revenueData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                          <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                          <YAxis tick={{ fontSize: 12 }} />
+                          <Tooltip 
+                            formatter={(value) => [`₹${value.toLocaleString('en-IN')}`, '']}
+                            labelFormatter={(label) => `Month: ${label}`}
+                          />
+                          <Bar dataKey="revenue" fill="#3B82F6" name="Revenue" radius={[2, 2, 0, 0]} />
+                          <Bar dataKey="expenses" fill="#EF4444" name="Expenses" radius={[2, 2, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="shadow-lg border-0 hover:shadow-xl transition-shadow">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <PieChart className="h-5 w-5 text-green-600" />
+                        Event Distribution
+                      </CardTitle>
+                      <CardDescription>Breakdown by event type this quarter</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <RechartsPieChart>
+                          <Pie
+                            data={eventTypeData}
+                            cx="50%"
+                            cy="50%"
+                            outerRadius={80}
+                            dataKey="value"
+                            label={({ name, value }) => `${name}: ${value}%`}
+                            labelLine={false}
+                          >
+                            {eventTypeData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(value) => [`${value}%`, 'Percentage']} />
+                        </RechartsPieChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="shadow-lg border-0 hover:shadow-xl transition-shadow">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Activity className="h-5 w-5 text-purple-600" />
+                        Staff Utilization
+                      </CardTitle>
+                      <CardDescription>Daily staff utilization percentage</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <AreaChart data={staffUtilizationData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                          <XAxis 
+                            dataKey="date" 
+                            tickFormatter={(date) => new Date(date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} 
+                            tick={{ fontSize: 12 }}
+                          />
+                          <YAxis tick={{ fontSize: 12 }} />
+                          <Tooltip 
+                            formatter={(value) => [`${value}%`, 'Utilization']}
+                            labelFormatter={(date) => new Date(date).toLocaleDateString('en-IN')}
+                          />
+                          <Area 
+                            type="monotone" 
+                            dataKey="utilization" 
+                            stroke="#8B5CF6" 
+                            fill="#8B5CF6" 
+                            fillOpacity={0.3}
+                            strokeWidth={2}
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="shadow-lg border-0 hover:shadow-xl transition-shadow">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Award className="h-5 w-5 text-orange-600" />
+                        Team Leader Performance
+                      </CardTitle>
+                      <CardDescription>Top performing team leaders this month</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {teamLeaderPerformance.map((leader, index) => (
+                          <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
+                                {leader.name.charAt(0)}
+                              </div>
+                              <div>
+                                <p className="font-medium">{leader.name}</p>
+                                <div className="flex items-center space-x-4 text-sm text-gray-600">
+                                  <span>{leader.events} events</span>
+                                  <div className="flex items-center">
+                                    <Star className="h-3 w-3 text-yellow-500 mr-1 fill-current" />
+                                    {leader.rating}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-semibold text-green-600">₹{leader.earnings.toLocaleString('en-IN')}</p>
+                              <p className="text-xs text-gray-500">This month</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Quick Actions */}
+                <Card className="shadow-lg border-0 hover:shadow-xl transition-shadow">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Zap className="h-5 w-5 text-yellow-600" />
+                      Quick Actions
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                      <Button 
+                        variant="outline" 
+                        className="h-16 flex-col gap-2 hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                        onClick={() => setShowCreateForm(true)}
+                      >
+                        <Plus className="h-5 w-5" />
+                        New Event
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="h-16 flex-col gap-2 hover:bg-green-50 hover:border-green-300 transition-colors"
+                        onClick={() => setActiveTab('assignments')}
+                      >
+                        <Users className="h-5 w-5" />
+                        Manage Staff
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="h-16 flex-col gap-2 hover:bg-purple-50 hover:border-purple-300 transition-colors"
+                      >
+                        <BarChart3 className="h-5 w-5" />
+                        View Reports
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="h-16 flex-col gap-2 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                      >
+                        <Settings className="h-5 w-5" />
+                        Settings
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="events" className="space-y-6">
+                {/* Search and Filter */}
+                <Card className="shadow-lg border-0">
+                  <CardContent className="pt-6">
+                    <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
+                      <div className="relative flex-1 max-w-md w-full">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                        <Input
+                          placeholder="Search events, clients, or locations..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="pl-10 h-11 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                        />
+                      </div>
+                      <div className="flex items-center space-x-3 w-full lg:w-auto">
+                        <Select value={filterStatus} onValueChange={setFilterStatus}>
+                          <SelectTrigger className="w-full lg:w-40 h-11">
+                            <SelectValue placeholder="Filter by status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Status</SelectItem>
+                            <SelectItem value="open">Open</SelectItem>
+                            <SelectItem value="assigned">Assigned</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button variant="outline" size="icon" className="h-11 w-11 flex-shrink-0">
+                          <Download className="h-4 w-4" />
+                          <span className="sr-only">Export data</span>
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Events List */}
+                <div className="grid gap-6">
+                  {filteredEvents.length === 0 ? (
+                    <Card className="shadow-lg border-0">
+                      <CardContent className="pt-12 pb-12 text-center">
+                        <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                        <p className="text-gray-600 text-lg">No events found</p>
+                        <p className="text-gray-500">Try adjusting your search or filter criteria</p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    filteredEvents.map((event) => (
+                      <EventCard 
+                        key={event.id} 
+                        event={event} 
+                        onViewResponses={loadEventResponses}
+                        formatDate={formatDate}
+                        getStatusBadge={getStatusBadge}
+                      />
+                    ))
+                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="assignments">
+                <AssignmentsTab 
+                  events={events}
+                  formatDate={formatDate}
+                />
+              </TabsContent>
+            </Tabs>
+          </div>
+        </main>
+      </div>
+
+      {/* Create Event Dialog */}
+      <CreateEventDialog 
+        open={showCreateForm}
+        onOpenChange={setShowCreateForm}
+        formData={formData}
+        setFormData={setFormData}
+        formErrors={formErrors}
+        onSubmit={handleCreateEvent}
+        loading={loading}
+        onReset={resetForm}
+      />
+
+      {/* Event Responses Dialog */}
+      <EventResponsesDialog
+        selectedEvent={selectedEvent}
+        onOpenChange={() => setSelectedEvent(null)}
+        eventResponses={eventResponses}
+        onCreateAssignment={createAssignment}
+        formatDate={formatDate}
+      />
+    </div>
+  )
+}
+
+// Sidebar Component
+function SidebarContent({ setSidebarOpen, activeTab, setActiveTab }) {
+  const menuItems = [
+    { id: 'overview', label: 'Overview', icon: Home },
+    { id: 'events', label: 'Events', icon: Calendar },
+    { id: 'assignments', label: 'Assignments', icon: Users },
+  ]
+
+  return (
+    <div className="flex flex-col h-full bg-white shadow-lg">
+      <div className="flex items-center justify-between p-6 border-b">
+        <div className="flex items-center space-x-2">
+          <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg"></div>
+          <span className="font-bold text-xl">WorkForce</span>
+        </div>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="lg:hidden"
+          onClick={() => setSidebarOpen?.(false)}
+        >
+          <X className="h-4 w-4" />
+          <span className="sr-only">Close sidebar</span>
+        </Button>
+      </div>
+      
+      <nav className="flex-1 p-4 space-y-2">
+        {menuItems.map((item) => {
+          const Icon = item.icon
+          return (
+            <Button
+              key={item.id}
+              variant={activeTab === item.id ? "default" : "ghost"}
+              className={`w-full justify-start transition-all ${
+                activeTab === item.id 
+                  ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-md' 
+                  : 'hover:bg-gray-100'
+              }`}
+              onClick={() => {
+                setActiveTab(item.id)
+                setSidebarOpen?.(false)
+              }}
+            >
+              <Icon className="h-4 w-4 mr-3" />
+              {item.label}
+            </Button>
+          )
+        })}
+      </nav>
+
+      <div className="p-4 border-t">
+        <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
+            A
+          </div>
+          <div>
+            <p className="font-medium text-sm">Admin User</p>
+            <p className="text-xs text-gray-600">Administrator</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Stat Card Component
+function StatCard({ title, value, subtitle, icon: Icon, color, progress, trend }) {
+  const colorClasses = {
+    blue: 'from-blue-50 to-blue-100 text-blue-800 bg-blue-500',
+    green: 'from-green-50 to-green-100 text-green-800 bg-green-500',
+    purple: 'from-purple-50 to-purple-100 text-purple-800 bg-purple-500',
+    orange: 'from-orange-50 to-orange-100 text-orange-800 bg-orange-500'
+  }
+
+  return (
+    <Card className={`hover:shadow-xl transition-all duration-300 border-0 shadow-lg bg-gradient-to-br ${colorClasses[color].split(' ').slice(0, 2).join(' ')} cursor-pointer`}>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+        <CardTitle className={`text-sm font-medium ${colorClasses[color].split(' ')[2]}`}>
+          {title}
+        </CardTitle>
+        <div className={`p-2 rounded-lg ${colorClasses[color].split(' ')[3]} text-white shadow-sm`}>
+          <Icon className="h-5 w-5" />
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className={`text-2xl lg:text-3xl font-bold mb-1 ${colorClasses[color].split(' ')[2].replace('800', '900')}`}>
+          {value}
+        </div>
+        <div className="flex items-center justify-between">
+          <span className={`text-xs ${colorClasses[color].split(' ')[2].replace('800', '700')}`}>
+            {subtitle}
+          </span>
+          {trend && (
+            <div className={`flex items-center text-xs font-medium ${trend.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+              {trend.isPositive ? <ArrowUp className="h-3 w-3 mr-1" /> : <ArrowDown className="h-3 w-3 mr-1" />}
+              {trend.value}%
+            </div>
+          )}
+        </div>
+        {progress !== undefined && (
+          <Progress value={progress} className="mt-3 h-2" />
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+// Event Card Component
+function EventCard({ event, onViewResponses, formatDate, getStatusBadge }) {
+  return (
+    <Card className="hover:shadow-xl transition-all duration-300 border-0 shadow-lg group">
+      <CardHeader className="bg-gradient-to-r from-gray-50 to-white rounded-t-lg">
+        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4">
+          <div className="flex-1">
+            <CardTitle className="flex flex-col sm:flex-row sm:items-center gap-3 text-xl group-hover:text-blue-600 transition-colors">
+              <span className="break-words">{event.title}</span>
+              {getStatusBadge(event.status)}
+            </CardTitle>
+            <CardDescription className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2 text-base">
+              <span className="flex items-center gap-1">
+                <Building className="h-4 w-4 flex-shrink-0" />
+                <span className="break-words">{event.client}</span>
+              </span>
+              <span className="text-gray-400 hidden sm:inline">•</span>
+              <span className="capitalize font-medium text-blue-600">{event.eventType}</span>
+            </CardDescription>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onViewResponses(event)}
+            disabled={event.status !== 'open'}
+            className="hover:bg-blue-50 hover:border-blue-300 flex-shrink-0 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Eye className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Responses</span>
+            <span className="sm:hidden">({event.responses?.length || 0})</span>
+            <span className="hidden sm:inline ml-1">({event.responses?.length || 0})</span>
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-blue-100 rounded-lg flex-shrink-0 group-hover:bg-blue-200 transition-colors">
+              <Calendar className="h-4 w-4 text-blue-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Date & Time</p>
+              <p className="font-semibold text-gray-900 text-sm break-words">{formatDate(event.eventDate)}</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-green-100 rounded-lg flex-shrink-0 group-hover:bg-green-200 transition-colors">
+              <MapPin className="h-4 w-4 text-green-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Location</p>
+              <p className="font-semibold text-gray-900 text-sm break-words">{event.location}</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-purple-100 rounded-lg flex-shrink-0 group-hover:bg-purple-200 transition-colors">
+              <Users className="h-4 w-4 text-purple-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Staff Needed</p>
+              <p className="font-semibold text-gray-900 text-sm">{event.staffNeeded} people</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-orange-100 rounded-lg flex-shrink-0 group-hover:bg-orange-200 transition-colors">
+              <DollarSign className="h-4 w-4 text-orange-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Expected Revenue</p>
+              <p className="font-semibold text-gray-900 text-sm">₹{event.expectedRevenue?.toLocaleString('en-IN')}</p>
+            </div>
+          </div>
+        </div>
+        {event.requirements && (
+          <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg group-hover:bg-yellow-100 transition-colors">
+            <div className="flex items-start space-x-2">
+              <Star className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0 fill-current" />
+              <div className="min-w-0">
+                <p className="font-medium text-yellow-800 text-sm">Special Requirements</p>
+                <p className="text-yellow-700 text-sm mt-1 break-words">{event.requirements}</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+// Assignments Tab Component
+function AssignmentsTab({ events, formatDate }) {
+  const assignedEvents = events.filter(event => event.assignments && event.assignments.length > 0)
+  const assignments = assignedEvents.flatMap(event => 
+    event.assignments.map(assignment => ({
+      ...assignment,
+      eventTitle: event.title,
+      eventDate: event.eventDate,
+      eventType: event.eventType
+    }))
+  )
+
+  return (
+    <Card className="shadow-lg border-0">
+      <CardHeader className="bg-gradient-to-r from-gray-50 to-white rounded-t-lg">
+        <CardTitle className="flex items-center gap-2">
+          <Users className="h-5 w-5 text-blue-600" />
+          Staff Assignments & Wage Calculator
+        </CardTitle>
+        <CardDescription>
+          Track assigned staff and calculate wages automatically with detailed breakdowns
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="pt-6">
+        <Alert className="mb-6 border-blue-200 bg-blue-50">
+          <AlertTriangle className="h-4 w-4 text-blue-600" />
+          <AlertDescription className="text-blue-800">
+            <strong>Wage Structure:</strong> ₹350 for 7 hours standard duty + ₹50 per hour overtime + TL commission based on team size
+          </AlertDescription>
+        </Alert>
+        
+        {assignments.length === 0 ? (
+          <div className="text-center py-12">
+            <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600 text-lg">No assignments yet</p>
+            <p className="text-gray-500">Assignments will appear here once events are assigned to team leaders</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <div className="min-w-full">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gray-50">
+                    <TableHead className="font-semibold min-w-[200px]">Event Details</TableHead>
+                    <TableHead className="font-semibold min-w-[150px]">Team Leader</TableHead>
+                    <TableHead className="font-semibold">Staff</TableHead>
+                    <TableHead className="font-semibold">Hours</TableHead>
+                    <TableHead className="font-semibold min-w-[180px]">Wage Calculation</TableHead>
+                    <TableHead className="font-semibold min-w-[120px]">Time Tracking</TableHead>
+                    <TableHead className="font-semibold">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {assignments.map((assignment, index) => (
+                    <TableRow key={assignment.id} className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-100 transition-colors`}>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <p className="font-semibold text-gray-900 break-words">{assignment.eventTitle}</p>
+                          <div className="flex items-center space-x-2 text-sm text-gray-600">
+                            <Calendar className="h-3 w-3 flex-shrink-0" />
+                            <span className="break-words">{formatDate(assignment.eventDate)}</span>
+                          </div>
+                          <Badge variant="outline" className="text-xs">
+                            {assignment.eventType}
+                          </Badge>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
+                            {assignment.teamLeader?.name?.charAt(0)}
+                          </div>
+                          <span className="font-medium break-words">{assignment.teamLeader?.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <Users className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                          <span className="font-medium">{assignment.staffAssigned}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="flex items-center space-x-2">
+                            <Clock className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                            <span className="font-medium">{assignment.actualHours || assignment.assignedHours}h</span>
+                          </div>
+                          {assignment.actualHours > 7 && (
+                            <Badge variant="outline" className="text-xs text-orange-600 bg-orange-50 border-orange-200">
+                              +{(assignment.actualHours - 7).toFixed(1)}h OT
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-2">
+                          <div className="flex items-center space-x-2">
+                            <DollarSign className="h-4 w-4 text-green-600 flex-shrink-0" />
+                            <span className="font-bold text-lg text-green-600">₹{assignment.totalWage?.toLocaleString('en-IN')}</span>
+                          </div>
+                          <div className="text-xs text-gray-600 space-y-1">
+                            <div>Base: ₹{assignment.basePay?.toLocaleString('en-IN')}</div>
+                            {assignment.overtimePay > 0 && (
+                              <div>OT: ₹{assignment.overtimePay?.toLocaleString('en-IN')}</div>
+                            )}
+                            {assignment.commission && (
+                              <div>Comm: ₹{assignment.commission?.toLocaleString('en-IN')}</div>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          {assignment.entryTime && assignment.exitTime ? (
+                            <div className="text-xs text-gray-600">
+                              <div className="flex items-center gap-1">
+                                <Play className="h-3 w-3 text-green-600 flex-shrink-0 fill-current" />
+                                <span>{new Date(assignment.entryTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Square className="h-3 w-3 text-red-600 flex-shrink-0 fill-current" />
+                                <span>{new Date(assignment.exitTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
+                              </div>
+                              <Badge variant="outline" className="text-xs text-green-600 bg-green-50 border-green-200 mt-1">
+                                Completed
+                              </Badge>
+                            </div>
+                          ) : (
+                            <div className="flex items-center text-xs text-gray-500">
+                              <Clock className="h-3 w-3 mr-1 flex-shrink-0" />
+                              Pending
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={assignment.status === 'paid' ? 'default' : 'outline'}
+                          className={`${
+                            assignment.status === 'paid' 
+                              ? 'bg-green-500 hover:bg-green-600 text-white' 
+                              : 'text-gray-600 bg-gray-50 border-gray-200'
+                          } capitalize`}
+                        >
+                          {assignment.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+// Create Event Dialog Component
+function CreateEventDialog({ open, onOpenChange, formData, setFormData, formErrors, onSubmit, loading, onReset }) {
+  const handleClose = () => {
+    onOpenChange(false)
+    onReset()
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-bold">Create New Event</DialogTitle>
+          <DialogDescription className="text-base">
+            Enter comprehensive event details to notify team leaders and collect availability responses.
+          </DialogDescription>
+        </DialogHeader>
+        
+        <form onSubmit={onSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="title" className="text-sm font-semibold">
+                Event Title <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="title"
+                value={formData.title}
+                onChange={(e) => setFormData({...formData, title: e.target.value})}
+                placeholder="Corporate Conference Setup"
+                className={`h-12 transition-all ${
+                  formErrors.title ? 'border-red-300 focus:border-red-500' : 'focus:border-blue-500'
+                }`}
+                required
+              />
+              {formErrors.title && (
+                <p className="text-red-500 text-sm">{formErrors.title}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="client" className="text-sm font-semibold">
+                Client Name <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="client"
+                value={formData.client}
+                onChange={(e) => setFormData({...formData, client: e.target.value})}
+                placeholder="Tech Corp Ltd"
+                className={`h-12 transition-all ${
+                  formErrors.client ? 'border-red-300 focus:border-red-500' : 'focus:border-blue-500'
+                }`}
+                required
+              />
+              {formErrors.client && (
+                <p className="text-red-500 text-sm">{formErrors.client}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="eventType" className="text-sm font-semibold">
+                Event Type <span className="text-red-500">*</span>
+              </Label>
+              <Select 
+                value={formData.eventType} 
+                onValueChange={(value) => setFormData({...formData, eventType: value})}
+              >
+                <SelectTrigger className={`h-12 transition-all ${
+                  formErrors.eventType ? 'border-red-300 focus:border-red-500' : 'focus:border-blue-500'
+                }`}>
+                  <SelectValue placeholder="Select event type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Corporate Event">Corporate Event</SelectItem>
+                  <SelectItem value="Wedding">Wedding</SelectItem>
+                  <SelectItem value="Hotel Service">Hotel Service</SelectItem>
+                  <SelectItem value="Catering">Catering</SelectItem>
+                  <SelectItem value="Conference">Conference</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+              {formErrors.eventType && (
+                <p className="text-red-500 text-sm">{formErrors.eventType}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="eventDate" className="text-sm font-semibold">
+                Date & Time <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="eventDate"
+                type="datetime-local"
+                value={formData.eventDate}
+                onChange={(e) => setFormData({...formData, eventDate: e.target.value})}
+                className={`h-12 transition-all ${
+                  formErrors.eventDate ? 'border-red-300 focus:border-red-500' : 'focus:border-blue-500'
+                }`}
+                required
+              />
+              {formErrors.eventDate && (
+                <p className="text-red-500 text-sm">{formErrors.eventDate}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="location" className="text-sm font-semibold">
+              Location <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="location"
+              value={formData.location}
+              onChange={(e) => setFormData({...formData, location: e.target.value})}
+              placeholder="Grand Hotel, Mumbai"
+              className={`h-12 transition-all ${
+                formErrors.location ? 'border-red-300 focus:border-red-500' : 'focus:border-blue-500'
+              }`}
+              required
+            />
+            {formErrors.location && (
+              <p className="text-red-500 text-sm">{formErrors.location}</p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="staffNeeded" className="text-sm font-semibold">
+                Staff Needed <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="staffNeeded"
+                type="number"
+                value={formData.staffNeeded}
+                onChange={(e) => setFormData({...formData, staffNeeded: e.target.value})}
+                placeholder="8"
+                min="1"
+                className={`h-12 transition-all ${
+                  formErrors.staffNeeded ? 'border-red-300 focus:border-red-500' : 'focus:border-blue-500'
+                }`}
+                required
+              />
+              {formErrors.staffNeeded && (
+                <p className="text-red-500 text-sm">{formErrors.staffNeeded}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="expectedRevenue" className="text-sm font-semibold">Expected Revenue (₹)</Label>
+              <Input
+                id="expectedRevenue"
+                type="number"
+                value={formData.expectedRevenue}
+                onChange={(e) => setFormData({...formData, expectedRevenue: e.target.value})}
+                placeholder="50000"
+                min="0"
+                className="h-12 focus:border-blue-500 transition-all"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="budgetAllocated" className="text-sm font-semibold">Budget Allocated (₹)</Label>
+              <Input
+                id="budgetAllocated"
+                type="number"
+                value={formData.budgetAllocated}
+                onChange={(e) => setFormData({...formData, budgetAllocated: e.target.value})}
+                placeholder="35000"
+                min="0"
+                className="h-12 focus:border-blue-500 transition-all"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="requirements" className="text-sm font-semibold">Special Requirements</Label>
+            <Textarea
+              id="requirements"
+              value={formData.requirements}
+              onChange={(e) => setFormData({...formData, requirements: e.target.value})}
+              placeholder="Any special equipment, skills, or instructions for the team..."
+              rows={4}
+              className="resize-none focus:border-blue-500 transition-all"
+            />
+          </div>
+
+          <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4 pt-6 border-t">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={handleClose}
+              className="px-8 py-3 transition-all hover:bg-gray-50"
+              disabled={loading}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="submit"
+              className="px-8 py-3 bg-blue-600 hover:bg-blue-700 transition-all shadow-md hover:shadow-lg"
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                <Plus className="h-4 w-4 mr-2" />
+              Create Event
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// Event Responses Dialog Component
+function EventResponsesDialog({ selectedEvent, onOpenChange, eventResponses, onCreateAssignment, formatDate }) {
+  if (!selectedEvent) return null
+
+  return (
+    <Dialog open={!!selectedEvent} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-xl lg:text-2xl font-bold flex items-center gap-2">
+            <Users className="h-6 w-6 text-blue-600" />
+            <span className="break-words">Team Leader Responses - {selectedEvent?.title}</span>
+          </DialogTitle>
+          <DialogDescription className="text-base">
+            Review responses and assign team leaders to this event. Click "Assign" to confirm team leader allocation.
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-6">
+          {/* Event Summary Card */}
+          <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center">
+                  <div className="text-xl lg:text-2xl font-bold text-blue-600">{selectedEvent?.staffNeeded}</div>
+                  <div className="text-xs lg:text-sm text-gray-600">Staff Needed</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xl lg:text-2xl font-bold text-green-600">{eventResponses.filter(r => r.available).length}</div>
+                  <div className="text-xs lg:text-sm text-gray-600">Available TLs</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xl lg:text-2xl font-bold text-purple-600">
+                    {eventResponses.filter(r => r.available).reduce((sum, r) => sum + (r.staffCount || 0), 0)}
+                  </div>
+                  <div className="text-xs lg:text-sm text-gray-600">Total Available Staff</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xl lg:text-2xl font-bold text-orange-600">₹{selectedEvent?.expectedRevenue?.toLocaleString('en-IN')}</div>
+                  <div className="text-xs lg:text-sm text-gray-600">Expected Revenue</div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <div className="grid gap-6">
-            {filteredEvents.length === 0 ? (
-              <Card className="shadow-md border-0">
-                <CardContent className="pt-12 pb-12 text-center">
-                  <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 text-lg">No events found</p>
-                  <p className="text-gray-500">Try adjusting your search or filter criteria</p>
-                </CardContent>
-              </Card>
-            ) : (
-              filteredEvents.map((event) => (
-                <Card key={event.id} className="hover:shadow-xl transition-all duration-300 border-0 shadow-md">
-                  <CardHeader className="bg-gradient-to-r from-gray-50 to-white rounded-t-lg">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <CardTitle className="flex items-center gap-3 text-xl">
-                          {event.title}
-                          {getStatusBadge(event.status)}
-                        </CardTitle>
-                        <CardDescription className="flex items-center gap-4 mt-2 text-base">
-                          <span className="flex items-center gap-1">
-                            <Building className="h-4 w-4" />
-                            {event.client}
-                          </span>
-                          <span className="text-gray-400">•</span>
-                          <span className="capitalize font-medium text-blue-600">{event.eventType}</span>
-                        </CardDescription>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => loadEventResponses(event)}
-                        disabled={event.status !== 'open'}
-                        className="ml-4 hover:bg-blue-50 hover:border-blue-300"
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        Responses ({event.responses?.length || 0})
-                      </Button>
-                    </div>
-                  </CardHeader>
+          {eventResponses.length === 0 ? (
+            <Card className="border-dashed border-2 border-gray-300">
+              <CardContent className="pt-12 pb-12 text-center">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Users className="h-8 w-8 text-gray-400" />
+                </div>
+                <p className="text-gray-700 text-lg font-medium">No responses yet</p>
+                <p className="text-gray-500">Team leader responses will appear here as they come in</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {eventResponses.map((response) => (
+                <Card key={response.id} className="border-gray-200 hover:shadow-md transition-shadow">
                   <CardContent className="pt-6">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                      <div className="flex items-center space-x-3">
-                        <div className="p-2 bg-blue-100 rounded-lg">
-                          <Calendar className="h-4 w-4 text-blue-600" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Date & Time</p>
-                          <p className="font-semibold text-gray-900">{formatDate(event.eventDate)}</p>
-                        </div>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0">
+                          {response.teamLeader?.name?.charAt(0) || 'T'}
+                            </div>
+                            <div className="min-w-0">
+                          <p className="font-semibold break-words">{response.teamLeader?.name || 'Team Leader'}</p>
+                          <p className="text-xs text-gray-500 break-words">{response.teamLeader?.email}</p>
+                          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                            <Badge variant="outline" className={`text-xs ${response.available ? 'text-green-700 bg-green-50 border-green-200' : 'text-red-700 bg-red-50 border-red-200'}`}>
+                              {response.available ? 'Available' : 'Not Available'}
+                          </Badge>
+                            {typeof response.staffCount === 'number' && (
+                              <span className="flex items-center gap-1">
+                                <Users className="h-3 w-3 text-gray-400" />
+                                {response.staffCount} staff
+                              </span>
+                            )}
+                            {response.respondedAt && (
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3 text-gray-400" />
+                                {formatDate(response.respondedAt)}
+                              </span>
+                            )}
+                          </div>
+                          </div>
                       </div>
-                      <div className="flex items-center space-x-3">
-                        <div className="p-2 bg-green-100 rounded-lg">
-                          <MapPin className="h-4 w-4 text-green-600" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Location</p>
-                          <p className="font-semibold text-gray-900">{event.location}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <div className="p-2 bg-purple-100 rounded-lg">
-                          <Users className="h-4 w-4 text-purple-600" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Staff Needed</p>
-                          <p className="font-semibold text-gray-900">{event.staffNeeded} people</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <div className="p-2 bg-orange-100 rounded-lg">
-                          <DollarSign className="h-4 w-4 text-orange-600" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Expected Revenue</p>
-                          <p className="font-semibold text-gray-900">₹{event.expectedRevenue?.toLocaleString()}</p>
-                        </div>
+                      <div className="flex flex-col items-end gap-2">
+                            <Button
+                              size="sm"
+                          disabled={!response.available}
+                          onClick={() => {
+                            onCreateAssignment(selectedEvent.id, response.teamLeaderId, response.staffCount || 0)
+                            onOpenChange(false)
+                          }}
+                          className="hover:bg-blue-50 hover:border-blue-300"
+                          variant="outline"
+                        >
+                              Assign
+                            </Button>
                       </div>
                     </div>
-                    {event.requirements && (
-                      <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <div className="flex items-start space-x-2">
-                          <Star className="h-4 w-4 text-yellow-600 mt-0.5" />
-                          <div>
-                            <p className="font-medium text-yellow-800 text-sm">Special Requirements</p>
-                            <p className="text-yellow-700 text-sm mt-1">{event.requirements}</p>
-                          </div>
-                        </div>
+                    {response.message && (
+                      <div className="mt-4 p-3 bg-gray-50 rounded-lg text-sm text-gray-700 break-words">
+                        {response.message}
                       </div>
                     )}
                   </CardContent>
                 </Card>
-              ))
-            )}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="assignments">
-          <Card className="shadow-md border-0">
-            <CardHeader className="bg-gradient-to-r from-gray-50 to-white rounded-t-lg">
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-blue-600" />
-                Staff Assignments & Wage Calculator
-              </CardTitle>
-              <CardDescription>
-                Track assigned staff and calculate wages automatically with detailed breakdowns
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <Alert className="mb-6 border-blue-200 bg-blue-50">
-                <AlertTriangle className="h-4 w-4 text-blue-600" />
-                <AlertDescription className="text-blue-800">
-                  <strong>Wage Structure:</strong> ₹350 for 7 hours standard duty + ₹50 per hour overtime + TL commission based on team size
-                </AlertDescription>
-              </Alert>
-              
-              <div className="rounded-lg border">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-gray-50">
-                      <TableHead className="font-semibold">Event Details</TableHead>
-                      <TableHead className="font-semibold">Team Leader</TableHead>
-                      <TableHead className="font-semibold">Staff Assigned</TableHead>
-                      <TableHead className="font-semibold">Hours</TableHead>
-                      <TableHead className="font-semibold">Wage Calculation</TableHead>
-                      <TableHead className="font-semibold">Time Tracking</TableHead>
-                      <TableHead className="font-semibold">Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {events
-                      .filter(event => event.assignments && event.assignments.length > 0)
-                      .flatMap(event => 
-                        event.assignments.map(assignment => ({
-                          ...assignment,
-                          eventTitle: event.title,
-                          eventDate: event.eventDate,
-                          eventType: event.eventType
-                        }))
-                      )
-                      .map((assignment, index) => (
-                        <TableRow key={assignment.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                          <TableCell>
-                            <div className="space-y-1">
-                              <p className="font-semibold text-gray-900">{assignment.eventTitle}</p>
-                              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                                <Calendar className="h-3 w-3" />
-                                <span>{formatDate(assignment.eventDate)}</span>
-                              </div>
-                              <Badge variant="outline" className="text-xs">
-                                {assignment.eventType}
-                              </Badge>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center space-x-2">
-                              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                                {assignment.teamLeader?.name?.charAt(0)}
-                              </div>
-                              <span className="font-medium">{assignment.teamLeader?.name}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center space-x-2">
-                              <Users className="h-4 w-4 text-gray-400" />
-                              <span className="font-medium">{assignment.staffAssigned} people</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="space-y-1">
-                              <div className="flex items-center space-x-2">
-                                <Clock className="h-4 w-4 text-gray-400" />
-                                <span className="font-medium">{assignment.actualHours || assignment.assignedHours} hours</span>
-                              </div>
-                              {assignment.actualHours > 7 && (
-                                <Badge variant="outline" className="text-xs text-orange-600 bg-orange-50">
-                                  +{(assignment.actualHours - 7).toFixed(1)}h overtime
-                                </Badge>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="space-y-2">
-                              <div className="flex items-center space-x-2">
-                                <DollarSign className="h-4 w-4 text-green-600" />
-                                <span className="font-bold text-lg text-green-600">₹{assignment.totalWage?.toLocaleString()}</span>
-                              </div>
-                              <div className="text-xs text-gray-600 space-y-1">
-                                <div>Base: ₹{assignment.basePay}</div>
-                                {assignment.overtimePay > 0 && (
-                                  <div>Overtime: ₹{assignment.overtimePay}</div>
-                                )}
-                                {assignment.commission && (
-                                  <div>TL Commission: ₹{assignment.commission}</div>
-                                )}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="space-y-1">
-                              {assignment.entryTime && assignment.exitTime ? (
-                                <div className="text-xs text-gray-600">
-                                  <div className="flex items-center gap-1">
-                                    <Play className="h-3 w-3 text-green-600" />
-                                    {new Date(assignment.entryTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false })}
-                                  </div>
-                                  <div className="flex items-center gap-1">
-                                    <Square className="h-3 w-3 text-red-600" />
-                                    {new Date(assignment.exitTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false })}
-                                  </div>
-                                  <Badge variant="outline" className="text-xs text-green-600 bg-green-50">
-                                    Completed
-                                  </Badge>
-                                </div>
-                              ) : (
-                                <div className="text-xs text-gray-500">
-                                  <Clock className="h-3 w-3" />
-                                  Pending
-                                </div>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge 
-                              variant={assignment.status === 'paid' ? 'default' : 'outline'}
-                              className={assignment.status === 'paid' ? 'bg-green-500' : ''}
-                            >
-                              {assignment.status}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      {/* Enhanced Create Event Dialog */}
-      <Dialog open={showCreateForm} onOpenChange={setShowCreateForm}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold">Create New Event</DialogTitle>
-            <DialogDescription className="text-base">
-              Enter comprehensive event details to notify team leaders and collect availability responses.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <form onSubmit={handleCreateEvent} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="title" className="text-sm font-semibold">Event Title *</Label>
-                <Input
-                  id="title"
-                  value={formData.title}
-                  onChange={(e) => setFormData({...formData, title: e.target.value})}
-                  placeholder="Corporate Conference Setup"
-                  className="h-12"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="client" className="text-sm font-semibold">Client Name *</Label>
-                <Input
-                  id="client"
-                  value={formData.client}
-                  onChange={(e) => setFormData({...formData, client: e.target.value})}
-                  placeholder="Tech Corp Ltd"
-                  className="h-12"
-                  required
-                />
-              </div>
+              ))}
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="eventType" className="text-sm font-semibold">Event Type</Label>
-                <Select value={formData.eventType} onValueChange={(value) => setFormData({...formData, eventType: value})}>
-                  <SelectTrigger className="h-12">
-                    <SelectValue placeholder="Select event type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Corporate Event">Corporate Event</SelectItem>
-                    <SelectItem value="Wedding">Wedding</SelectItem>
-                    <SelectItem value="Hotel Service">Hotel Service</SelectItem>
-                    <SelectItem value="Catering">Catering</SelectItem>
-                    <SelectItem value="Conference">Conference</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="eventDate" className="text-sm font-semibold">Date & Time *</Label>
-                <Input
-                  id="eventDate"
-                  type="datetime-local"
-                  value={formData.eventDate}
-                  onChange={(e) => setFormData({...formData, eventDate: e.target.value})}
-                  className="h-12"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="location" className="text-sm font-semibold">Location *</Label>
-              <Input
-                id="location"
-                value={formData.location}
-                onChange={(e) => setFormData({...formData, location: e.target.value})}
-                placeholder="Grand Hotel, Mumbai"
-                className="h-12"
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="staffNeeded" className="text-sm font-semibold">Staff Needed *</Label>
-                <Input
-                  id="staffNeeded"
-                  type="number"
-                  value={formData.staffNeeded}
-                  onChange={(e) => setFormData({...formData, staffNeeded: e.target.value})}
-                  placeholder="8"
-                  min="1"
-                  className="h-12"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="expectedRevenue" className="text-sm font-semibold">Expected Revenue (₹)</Label>
-                <Input
-                  id="expectedRevenue"
-                  type="number"
-                  value={formData.expectedRevenue}
-                  onChange={(e) => setFormData({...formData, expectedRevenue: e.target.value})}
-                  placeholder="50000"
-                  className="h-12"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="budgetAllocated" className="text-sm font-semibold">Budget Allocated (₹)</Label>
-                <Input
-                  id="budgetAllocated"
-                  type="number"
-                  value={formData.budgetAllocated}
-                  onChange={(e) => setFormData({...formData, budgetAllocated: e.target.value})}
-                  placeholder="35000"
-                  className="h-12"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="requirements" className="text-sm font-semibold">Special Requirements</Label>
-              <Textarea
-                id="requirements"
-                value={formData.requirements}
-                onChange={(e) => setFormData({...formData, requirements: e.target.value})}
-                placeholder="Any special equipment, skills, or instructions for the team..."
-                rows={4}
-                className="resize-none"
-              />
-            </div>
-
-            <div className="flex justify-end space-x-4 pt-6 border-t">
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => setShowCreateForm(false)}
-                className="px-8 py-3"
-              >
-                Cancel
-              </Button>
-              <Button 
-                type="submit"
-                className="px-8 py-3 bg-blue-600 hover:bg-blue-700"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Create Event
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Enhanced Event Responses Dialog */}
-      <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold flex items-center gap-2">
-              <Users className="h-6 w-6 text-blue-600" />
-              Team Leader Responses - {selectedEvent?.title}
-            </DialogTitle>
-            <DialogDescription className="text-base">
-              Review responses and assign team leaders to this event. Click "Assign" to confirm team leader allocation.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-6">
-            {/* Event Summary Card */}
-            <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
-              <CardContent className="pt-6">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-600">{selectedEvent?.staffNeeded}</div>
-                    <div className="text-sm text-gray-600">Staff Needed</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">{eventResponses.filter(r => r.available).length}</div>
-                    <div className="text-sm text-gray-600">Available TLs</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-purple-600">
-                      {eventResponses.filter(r => r.available).reduce((sum, r) => sum + (r.staffCount || 0), 0)}
-                    </div>
-                    <div className="text-sm text-gray-600">Total Available Staff</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-orange-600">₹{selectedEvent?.expectedRevenue?.toLocaleString()}</div>
-                    <div className="text-sm text-gray-600">Expected Revenue</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {eventResponses.length === 0 ? (
-              <Card className="border-dashed border-2">
-                <CardContent className="pt-12 pb-12 text-center">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Users className="h-8 w-8 text-gray-400" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No responses received yet</h3>
-                  <p className="text-gray-600 max-w-md mx-auto">
-                    Team leaders will see this event in their dashboard and can respond with their availability. 
-                    Responses typically arrive within a few hours.
-                  </p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="rounded-lg border overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-gray-50">
-                      <TableHead className="font-semibold">Team Leader</TableHead>
-                      <TableHead className="font-semibold">Availability</TableHead>
-                      <TableHead className="font-semibold">Staff Count</TableHead>
-                      <TableHead className="font-semibold">Message</TableHead>
-                      <TableHead className="font-semibold">Response Time</TableHead>
-                      <TableHead className="font-semibold">Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {eventResponses.map((response, index) => (
-                      <TableRow key={response.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                        <TableCell>
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
-                              {response.teamLeader?.name?.charAt(0)}
-                            </div>
-                            <div>
-                              <p className="font-semibold text-gray-900">{response.teamLeader?.name}</p>
-                              <p className="text-sm text-gray-600">{response.teamLeader?.email}</p>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge 
-                            variant={response.available ? 'default' : 'destructive'}
-                            className={`${response.available ? 'bg-green-500' : 'bg-red-500'} text-white font-medium`}
-                          >
-                            {response.available ? (
-                              <>
-                                <CheckCircle className="h-3 w-3 mr-1" />
-                                Available
-                              </>
-                            ) : (
-                              <>
-                                <XCircle className="h-3 w-3 mr-1" />
-                                Not Available
-                              </>
-                            )}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            <Users className="h-4 w-4 text-gray-400" />
-                            <span className="font-semibold">{response.staffCount} people</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="max-w-xs">
-                            {response.message ? (
-                              <p className="text-sm bg-gray-100 p-2 rounded-md">{response.message}</p>
-                            ) : (
-                              <span className="text-gray-400 text-sm">No message</span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm text-gray-600">
-                            <div>{formatDate(response.respondedAt)}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {response.available ? (
-                            <Button
-                              size="sm"
-                              onClick={() => createAssignment(selectedEvent.id, response.teamLeaderId, response.staffCount)}
-                              disabled={selectedEvent?.status !== 'open'}
-                              className="bg-green-600 hover:bg-green-700 text-white"
-                            >
-                              <CheckCircle className="h-4 w-4 mr-2" />
-                              Assign
-                            </Button>
-                          ) : (
-                            <span className="text-gray-400 text-sm">Not available</span>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
