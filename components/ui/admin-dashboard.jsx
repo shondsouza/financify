@@ -944,7 +944,7 @@ function SidebarContent({ setSidebarOpen, activeTab, setActiveTab }) {
       <div className="p-4 border-t">
         <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
           <Avatar className="h-10 w-10 ring-2 ring-white shadow-md">
-            <AvatarImage src="/avatar/admin.png" alt="Admin" />
+            <AvatarImage src="/avatar/Admin.png" alt="Admin" />
             <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold">A</AvatarFallback>
           </Avatar>
           <div>

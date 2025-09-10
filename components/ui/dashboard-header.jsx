@@ -26,7 +26,7 @@ import { useState, useEffect } from 'react'
 
 export function DashboardHeader({ user, onLogout, onMenuToggle, notifications = 0 }) {
   const [currentTime, setCurrentTime] = useState(new Date())
-  const adminAvatarUrl = '/avatar/admin.png'
+  const adminAvatarUrl = '/avatar/Admin.png'
   const tlAvatarUrl = '/avatar/person.png'
 
   useEffect(() => {
