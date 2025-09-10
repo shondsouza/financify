@@ -88,9 +88,7 @@ export function DashboardHeader({ user, onLogout, onMenuToggle, notifications = 
             )}
             
             <div className="flex items-center space-x-3">
-              <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg">
-                <Zap className="h-5 w-5 text-white" />
-              </div>
+              <img src="/logo/logo.png" alt="Financify Logo" className="w-20 h-20 object-contain" />
               <div>
                 <h1 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
                   Financify
@@ -102,7 +100,7 @@ export function DashboardHeader({ user, onLogout, onMenuToggle, notifications = 
                   >
                     {getRoleIcon(user?.role)}
                     <span className="capitalize">
-                      {user?.role === 'admin' ? 'Administrator' : 'Team Leader'} Dashboard
+                      {user?.role === 'admin' ? 'Administrator' : 'Team Leader'} 
                     </span>
                   </Badge>
                 </div>

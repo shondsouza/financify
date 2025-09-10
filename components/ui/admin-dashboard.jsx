@@ -489,7 +489,7 @@ export default function AdminDashboard() {
                   </Button>
                   <Button 
                     variant="outline" 
-                    className="border-white text-white hover:bg-white hover:text-blue-600 transition-all"
+                    className="border-white/30 text-white bg-white/10 hover:bg-white hover:text-blue-600 transition-all backdrop-blur-sm"
                     onClick={() => window.location.reload()}
                   >
                     <RefreshCw className="h-4 w-4 mr-2" />
@@ -903,7 +903,7 @@ function SidebarContent({ setSidebarOpen, activeTab, setActiveTab }) {
     <div className="flex flex-col h-full bg-white shadow-lg">
       <div className="flex items-center justify-between p-6 border-b">
         <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg"></div>
+          <img src="/logo/logo.png" alt="Financify Logo" className="w-16 h-16 object-contain" />
           <span className="font-bold text-xl">Financify</span>
         </div>
         <Button 
