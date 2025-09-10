@@ -1,8 +1,8 @@
 import './globals.css'
 
 export const metadata = {
-  title: 'Next.js MongoDB Template',
-  description: 'A simple template with App Router, MongoDB, and shadcn/ui',
+  title: 'Financify',
+  description: 'Financify – Smart finance and workforce tracking',
 }
 
 export default function RootLayout({ children }) {

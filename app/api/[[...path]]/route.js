@@ -177,6 +177,56 @@ async function handleRoute(request, { params }) {
       return handleCORS(NextResponse.json(data))
     }
 
+    // Wage settings endpoints
+    // GET /api/wage-settings
+    if (route === '/wage-settings' && method === 'GET') {
+      const { data, error } = await dbOperations.getWageSettings()
+      if (error) {
+        return handleCORS(NextResponse.json({ error: error.message }, { status: 500 }))
+      }
+      return handleCORS(NextResponse.json(data))
+    }
+
+    // PUT /api/wage-settings
+    if (route === '/wage-settings' && method === 'PUT') {
+      const body = await request.json()
+      const { basePay, standardHours, overtimeRate } = body || {}
+      if (
+        basePay === undefined || standardHours === undefined || overtimeRate === undefined
+      ) {
+        return handleCORS(NextResponse.json(
+          { error: 'Missing fields: basePay, standardHours, overtimeRate' },
+          { status: 400 }
+        ))
+      }
+      const { data, error } = await dbOperations.upsertWageSettings({
+        basePay: parseFloat(basePay),
+        standardHours: parseFloat(standardHours),
+        overtimeRate: parseFloat(overtimeRate)
+      })
+      if (error) {
+        return handleCORS(NextResponse.json({ error: error.message }, { status: 500 }))
+      }
+      return handleCORS(NextResponse.json(data))
+    }
+
+    // GET /api/team-leader-assignments/:teamLeaderId
+    if (route.startsWith('/team-leader-assignments/') && method === 'GET') {
+      const teamLeaderId = route.split('/')[2]
+      console.log('API: Getting assignments for team leader ID:', teamLeaderId)
+      if (!teamLeaderId) {
+        return handleCORS(NextResponse.json({ error: "Team leader ID required" }, { status: 400 }))
+      }
+
+      const { data, error } = await dbOperations.getTeamLeaderAssignments(teamLeaderId)
+      console.log('API: Database query result:', { data, error })
+      if (error) {
+        console.error('API: Database error:', error)
+        return handleCORS(NextResponse.json({ error: error.message }, { status: 500 }))
+      }
+      return handleCORS(NextResponse.json(data))
+    }
+
     // Update assignment - PUT /api/assignments/[id]
     if (route.match(/^\/assignments\/[^\/]+$/) && method === 'PUT') {
       const assignmentId = path[1]

@@ -272,8 +272,8 @@ const LineChartComponent = ({ data }) => {
 }
 
 export default function TeamLeaderDashboard() {
-  // Mock user for demo
-  const user = { id: 1, name: 'John Doe' }
+  // Team leader user - will be loaded from database
+  const [user, setUser] = useState({ id: null, name: 'Loading...' })
   
   // Enhanced mock data with more realistic information
   const [events, setEvents] = useState([
@@ -394,51 +394,7 @@ export default function TeamLeaderDashboard() {
     }
     }, [])
 
-  const [myAssignments, setMyAssignments] = useState([
-    {
-      id: 1,
-      eventTitle: 'Summer Music Festival',
-      client: 'Music Events Ltd',
-      eventDate: '2025-08-25T16:00:00',
-      location: 'Lalitha Mahal Grounds',
-      staffAssigned: 8,
-      assignedHours: 8,
-      actualHours: 9.5,
-      status: 'completed',
-      totalWage: 425,
-      commission: 150,
-      entryTime: '2025-08-25T15:45:00',
-      exitTime: '2025-08-26T01:15:00'
-    },
-    {
-      id: 2,
-      eventTitle: 'Corporate Training Session',
-      client: 'InfoTech Solutions',
-      eventDate: '2025-08-20T09:00:00',
-      location: 'Hotel Metropole',
-      staffAssigned: 4,
-      assignedHours: 6,
-      actualHours: 6,
-      status: 'paid',
-      totalWage: 350,
-      commission: 75,
-      entryTime: '2025-08-20T08:45:00',
-      exitTime: '2025-08-20T15:00:00'
-    },
-    {
-      id: 3,
-      eventTitle: 'Birthday Celebration',
-      client: 'Raj Family',
-      eventDate: '2025-08-30T17:00:00',
-      location: 'Private Villa, Mysuru',
-      staffAssigned: 6,
-      assignedHours: 7,
-      actualHours: 7,
-      status: 'assigned',
-      totalWage: 350,
-      commission: 100
-    }
-  ])
+  const [myAssignments, setMyAssignments] = useState([])
 
   const [loading, setLoading] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState(null)
@@ -449,6 +405,95 @@ export default function TeamLeaderDashboard() {
   })
   const [selectedAssignment, setSelectedAssignment] = useState(null)
   const [showTimeTracking, setShowTimeTracking] = useState(false)
+
+  // Load team leader user from database
+  const loadTeamLeaderUser = async () => {
+    try {
+      console.log('Loading team leader user...')
+      const { data: teamLeaderUser, error } = await dbOperations.ensureTeamLeaderUser()
+      if (error) {
+        console.error('Failed to load team leader user:', error)
+        return
+      }
+      console.log('Loaded team leader user:', teamLeaderUser)
+      setUser(teamLeaderUser)
+    } catch (error) {
+      console.error('Failed to load team leader user:', error)
+    }
+  }
+
+  // Load team leader assignments from database
+  const loadAssignments = async () => {
+    try {
+      setLoading(true)
+      console.log('Loading assignments for user ID:', user.id)
+      const response = await fetch(`/api/team-leader-assignments/${user.id}`)
+      console.log('Assignment response status:', response.status)
+      if (response.ok) {
+        const assignments = await response.json()
+        console.log('Loaded assignments:', assignments)
+        // Transform database assignments to match UI format
+        const transformedAssignments = assignments.map(assignment => ({
+          id: assignment.id,
+          eventTitle: assignment.events?.title || 'Unknown Event',
+          client: assignment.events?.client || 'Unknown Client',
+          eventDate: assignment.events?.eventDate || assignment.assignedAt,
+          location: assignment.events?.location || 'Unknown Location',
+          staffAssigned: assignment.staffAssigned,
+          assignedHours: assignment.assignedHours,
+          actualHours: assignment.actualHours,
+          status: assignment.status,
+          totalWage: assignment.totalWage,
+          commission: assignment.commission,
+          entryTime: assignment.entryTime,
+          exitTime: assignment.exitTime
+        }))
+        console.log('Transformed assignments:', transformedAssignments)
+        setMyAssignments(transformedAssignments)
+      } else {
+        const errorData = await response.json()
+        console.error('Failed to load assignments:', errorData)
+      }
+    } catch (error) {
+      console.error('Failed to load assignments:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Load user and assignments on component mount and listen for updates
+  useEffect(() => {
+    const initializeDashboard = async () => {
+      await loadTeamLeaderUser()
+    }
+    initializeDashboard()
+    
+    // Listen for assignment updates from admin
+    const handleAssignmentUpdate = () => {
+      if (user.id) {
+        loadAssignments()
+      }
+    }
+    
+    if (typeof window !== 'undefined') {
+      window.addEventListener('assignment_created', handleAssignmentUpdate)
+      window.addEventListener('admin_events_updated', handleAssignmentUpdate)
+    }
+    
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('assignment_created', handleAssignmentUpdate)
+        window.removeEventListener('admin_events_updated', handleAssignmentUpdate)
+      }
+    }
+  }, [])
+
+  // Load assignments when user is loaded
+  useEffect(() => {
+    if (user.id) {
+      loadAssignments()
+    }
+  }, [user.id])
 
   const handleEventResponse = (event) => {
     setSelectedEvent(event)
@@ -507,8 +552,8 @@ export default function TeamLeaderDashboard() {
       // Then update local state with the saved response
       const normalized = {
         id: savedResponse.id,
-        teamLeaderId: user.id,
-        teamLeader: { name: user.name, email: `${user.name.split(' ').join('').toLowerCase()}@example.com` },
+        teamLeaderId: teamLeaderUser.id,
+        teamLeader: { name: teamLeaderUser.name, email: teamLeaderUser.email },
         available: savedResponse.available,
         staffCount: savedResponse.staffCount,
         message: savedResponse.message || '',
@@ -518,7 +563,7 @@ export default function TeamLeaderDashboard() {
       const updatedEvents = events.map(ev => {
         if (ev.id !== selectedEvent.id) return ev
         const existingResponses = Array.isArray(ev.responses) ? ev.responses : []
-        const idx = existingResponses.findIndex(r => r.teamLeaderId === user.id)
+        const idx = existingResponses.findIndex(r => r.teamLeaderId === teamLeaderUser.id)
         if (idx >= 0) {
           const merged = { ...existingResponses[idx], ...normalized, id: savedResponse.id }
           const copy = [...existingResponses]

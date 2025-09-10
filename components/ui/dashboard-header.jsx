@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { 
   DropdownMenu, 
@@ -26,6 +26,8 @@ import { useState, useEffect } from 'react'
 
 export function DashboardHeader({ user, onLogout, onMenuToggle, notifications = 0 }) {
   const [currentTime, setCurrentTime] = useState(new Date())
+  const adminAvatarUrl = '/avatar/admin.png'
+  const tlAvatarUrl = '/avatar/person.png'
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000)
@@ -91,7 +93,7 @@ export function DashboardHeader({ user, onLogout, onMenuToggle, notifications = 
               </div>
               <div>
                 <h1 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                  Smart Finance & Workforce Tracker
+                  Financify
                 </h1>
                 <div className="flex items-center space-x-2">
                   <Badge 
@@ -159,6 +161,11 @@ export function DashboardHeader({ user, onLogout, onMenuToggle, notifications = 
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-11 w-11 rounded-full hover:ring-2 hover:ring-blue-200 transition-all duration-200">
                     <Avatar className="h-11 w-11 ring-2 ring-white shadow-md">
+                      {user?.role === 'admin' ? (
+                        <AvatarImage src={adminAvatarUrl} alt="Admin Avatar" />
+                      ) : (
+                        <AvatarImage src={tlAvatarUrl} alt="Team Leader Avatar" />
+                      )}
                       <AvatarFallback className={`${getRoleBadgeColor(user?.role)} text-white font-semibold text-sm`}>
                         {getInitials(user?.name)}
                       </AvatarFallback>

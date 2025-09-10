@@ -22,6 +22,7 @@ import {
   Home, Settings, Bell, ChevronRight, ArrowUp, ArrowDown
 } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart as RechartsPieChart, Cell, AreaChart, Area, Pie } from 'recharts'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import NotificationBanner from './notification-banner'
 
 export default function AdminDashboard() {
@@ -65,6 +66,8 @@ export default function AdminDashboard() {
   const [selectedEvent, setSelectedEvent] = useState(null)
   const [eventResponses, setEventResponses] = useState([])
   const [activeTab, setActiveTab] = useState('overview')
+  const [wageSettings, setWageSettings] = useState({ basePay: 350, standardHours: 7, overtimeRate: 50 })
+  const [savingWage, setSavingWage] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -107,6 +110,22 @@ export default function AdminDashboard() {
   }
   useEffect(() => {
     refetchEvents()
+    // Load wage settings
+    ;(async () => {
+      try {
+        const res = await fetch('/api/wage-settings', { method: 'GET' })
+        if (res.ok) {
+          const data = await res.json()
+          if (data) setWageSettings({
+            basePay: parseFloat(data.basePay) || 350,
+            standardHours: parseFloat(data.standardHours) || 7,
+            overtimeRate: parseFloat(data.overtimeRate) || 50
+          })
+        }
+      } catch (e) {
+        console.warn('Failed to load wage settings', e)
+      }
+    })()
     const vis = () => { if (document.visibilityState === 'visible') refetchEvents() }
     document.addEventListener('visibilitychange', vis)
     return () => document.removeEventListener('visibilitychange', vis)
@@ -249,32 +268,60 @@ export default function AdminDashboard() {
     setEventResponses(event.responses || [])
   }
 
-  const createAssignment = (eventId, teamLeaderId, staffCount) => {
-    const updatedEvents = events.map(event => 
-      event.id === eventId 
-        ? { ...event, status: 'assigned' }
-        : event
-    )
-    setEvents(updatedEvents)
-    setSelectedEvent(null)
-    
-    // Save to localStorage for team leader dashboard sync
+  const createAssignment = async (eventId, teamLeaderId, staffCount) => {
     try {
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('admin_events', JSON.stringify(updatedEvents))
-        // Dispatch custom event to notify team leader dashboard
-        window.dispatchEvent(new CustomEvent('admin_events_updated'))
+      // Create assignment in database
+      const assignmentData = {
+        eventId: eventId,
+        teamLeaderId: teamLeaderId,
+        staffAssigned: parseInt(staffCount),
+        assignedHours: 7.0, // Default 7 hours
+        commission: 0
       }
-    } catch (err) {
-      console.warn('Failed to save events to localStorage:', err)
+
+      const response = await fetch('/api/assignments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(assignmentData)
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to create assignment')
+      }
+
+      // Update local state
+      const updatedEvents = events.map(event => 
+        event.id === eventId 
+          ? { ...event, status: 'assigned' }
+          : event
+      )
+      setEvents(updatedEvents)
+      setSelectedEvent(null)
+      
+      // Save to localStorage for team leader dashboard sync
+      try {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('admin_events', JSON.stringify(updatedEvents))
+          // Dispatch custom event to notify team leader dashboard
+          window.dispatchEvent(new CustomEvent('admin_events_updated'))
+          window.dispatchEvent(new CustomEvent('assignment_created'))
+        }
+      } catch (err) {
+        console.warn('Failed to save events to localStorage:', err)
+      }
+      
+      // Update stats
+      setStats(prev => ({
+        ...prev,
+        openEvents: prev.openEvents - 1,
+        activeAssignments: prev.activeAssignments + 1
+      }))
+    } catch (error) {
+      console.error('Failed to create assignment:', error)
     }
-    
-    // Update stats
-    setStats(prev => ({
-      ...prev,
-      openEvents: prev.openEvents - 1,
-      activeAssignments: prev.activeAssignments + 1
-    }))
   }
 
   const deleteEvent = async (eventId) => {
@@ -740,6 +787,80 @@ export default function AdminDashboard() {
                   formatDate={formatDate}
                 />
               </TabsContent>
+
+              <TabsContent value="settings" className="space-y-6">
+                <Card className="shadow-lg border-0">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Settings className="h-5 w-5 text-gray-700" />
+                      Wage Settings
+                    </CardTitle>
+                    <CardDescription>Set base pay, standard hours, and overtime rate</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="basePay" className="text-sm font-semibold">Base Pay (₹)</Label>
+                        <Input id="basePay" type="number" min="0" step="0.01"
+                          value={wageSettings.basePay}
+                          onChange={(e) => setWageSettings({ ...wageSettings, basePay: e.target.value })}
+                          className="h-12" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="standardHours" className="text-sm font-semibold">Standard Hours</Label>
+                        <Input id="standardHours" type="number" min="0" step="0.25"
+                          value={wageSettings.standardHours}
+                          onChange={(e) => setWageSettings({ ...wageSettings, standardHours: e.target.value })}
+                          className="h-12" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="overtimeRate" className="text-sm font-semibold">Overtime Rate (₹/hr)</Label>
+                        <Input id="overtimeRate" type="number" min="0" step="0.01"
+                          value={wageSettings.overtimeRate}
+                          onChange={(e) => setWageSettings({ ...wageSettings, overtimeRate: e.target.value })}
+                          className="h-12" />
+                      </div>
+                    </div>
+                    <div className="flex justify-end mt-6">
+                      <Button
+                        onClick={async () => {
+                          setSavingWage(true)
+                          try {
+                            await fetch('/api/wage-settings', {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                basePay: parseFloat(wageSettings.basePay),
+                                standardHours: parseFloat(wageSettings.standardHours),
+                                overtimeRate: parseFloat(wageSettings.overtimeRate)
+                              })
+                            })
+                          } finally {
+                            setSavingWage(false)
+                          }
+                        }}
+                        className="px-8"
+                        disabled={savingWage}
+                      >
+                        {savingWage ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          'Save Settings'
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Alert className="border-blue-200 bg-blue-50">
+                  <AlertTriangle className="h-4 w-4 text-blue-600" />
+                  <AlertDescription className="text-blue-800">
+                    These settings are applied to new and updated assignments. Existing records keep their stored values until updated.
+                  </AlertDescription>
+                </Alert>
+              </TabsContent>
             </Tabs>
           </div>
         </main>
@@ -775,6 +896,7 @@ function SidebarContent({ setSidebarOpen, activeTab, setActiveTab }) {
     { id: 'overview', label: 'Overview', icon: Home },
     { id: 'events', label: 'Events', icon: Calendar },
     { id: 'assignments', label: 'Assignments', icon: Users },
+    { id: 'settings', label: 'Settings', icon: Settings },
   ]
 
   return (
@@ -782,7 +904,7 @@ function SidebarContent({ setSidebarOpen, activeTab, setActiveTab }) {
       <div className="flex items-center justify-between p-6 border-b">
         <div className="flex items-center space-x-2">
           <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg"></div>
-          <span className="font-bold text-xl">WorkForce</span>
+          <span className="font-bold text-xl">Financify</span>
         </div>
         <Button 
           variant="ghost" 
@@ -821,9 +943,10 @@ function SidebarContent({ setSidebarOpen, activeTab, setActiveTab }) {
 
       <div className="p-4 border-t">
         <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
-            A
-          </div>
+          <Avatar className="h-10 w-10 ring-2 ring-white shadow-md">
+            <AvatarImage src="/avatar/admin.png" alt="Admin" />
+            <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold">A</AvatarFallback>
+          </Avatar>
           <div>
             <p className="font-medium text-sm">Admin User</p>
             <p className="text-xs text-gray-600">Administrator</p>
