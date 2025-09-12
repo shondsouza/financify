@@ -432,6 +432,7 @@ export default function TeamLeaderDashboard() {
       if (response.ok) {
         const assignments = await response.json()
         console.log('Loaded assignments:', assignments)
+        console.log('Assignment count before deduplication:', assignments.length)
         // Transform database assignments to match UI format
         const transformedAssignments = assignments.map(assignment => ({
           id: assignment.id,
@@ -448,8 +449,15 @@ export default function TeamLeaderDashboard() {
           entryTime: assignment.entryTime,
           exitTime: assignment.exitTime
         }))
-        console.log('Transformed assignments:', transformedAssignments)
-        setMyAssignments(transformedAssignments)
+        
+        // Deduplicate assignments by ID to prevent any duplicates
+        const uniqueAssignments = transformedAssignments.filter((assignment, index, self) => 
+          index === self.findIndex(a => a.id === assignment.id)
+        )
+        
+        console.log('Assignment count after deduplication:', uniqueAssignments.length)
+        console.log('Transformed assignments:', uniqueAssignments)
+        setMyAssignments(uniqueAssignments)
       } else {
         const errorData = await response.json()
         console.error('Failed to load assignments:', errorData)

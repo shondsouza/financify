@@ -254,10 +254,39 @@ async function handleRoute(request, { params }) {
       const timeData = {
         entryTime: body.entryTime,
         exitTime: body.exitTime,
-        actualHours: parseFloat(body.actualHours)
+        actualHours: parseFloat(body.actualHours),
+        breakTime: parseInt(body.breakTime) || 0,
+        adminNotes: body.adminNotes || ''
       }
 
       const { data, error } = await dbOperations.updateAssignmentTime(assignmentId, timeData)
+      if (error) {
+        return handleCORS(NextResponse.json({ error: error.message }, { status: 500 }))
+      }
+      return handleCORS(NextResponse.json(data))
+    }
+
+    // Get pending assignments - GET /api/assignments/pending
+    if (route === '/assignments/pending' && method === 'GET') {
+      const { data, error } = await dbOperations.getPendingAssignments()
+      if (error) {
+        return handleCORS(NextResponse.json({ error: error.message }, { status: 500 }))
+      }
+      return handleCORS(NextResponse.json(data))
+    }
+
+    // Get completed assignments - GET /api/assignments/completed
+    if (route === '/assignments/completed' && method === 'GET') {
+      const { data, error } = await dbOperations.getCompletedAssignments()
+      if (error) {
+        return handleCORS(NextResponse.json({ error: error.message }, { status: 500 }))
+      }
+      return handleCORS(NextResponse.json(data))
+    }
+
+    // Get paid assignments - GET /api/assignments/paid
+    if (route === '/assignments/paid' && method === 'GET') {
+      const { data, error } = await dbOperations.getPaidAssignments()
       if (error) {
         return handleCORS(NextResponse.json({ error: error.message }, { status: 500 }))
       }

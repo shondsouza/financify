@@ -4,18 +4,27 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Clock, Play, Square, Calculator, DollarSign } from 'lucide-react'
+import { Clock, Play, Square, Calculator, DollarSign, Users, FileText } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import WageBreakdownDisplay from './wage-breakdown-display'
+import { generateProfessionalWageSlip } from '@/utils/pdfWageSlipGenerator'
+import { generateSimpleWageSlip } from '@/utils/simplePdfGenerator'
+import { generateProfessionalInvoice, generateWageSlipInvoice } from '@/utils/professionalInvoiceGenerator'
 
 export function TimeTrackingForm({ assignment, onTimeUpdate, onClose }) {
   const [entryTime, setEntryTime] = useState('')
   const [exitTime, setExitTime] = useState('')
   const [actualHours, setActualHours] = useState(0)
+  const [breakTime, setBreakTime] = useState(0)
+  const [adminNotes, setAdminNotes] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [wageBreakdown, setWageBreakdown] = useState(null)
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
 
   // Calculate actual hours when entry/exit times change
   useEffect(() => {
@@ -41,19 +50,25 @@ export function TimeTrackingForm({ assignment, onTimeUpdate, onClose }) {
     const basePay = 350.00
     const overtimeRate = 50.00
     const standardHours = 7.0
+    const tlCommissionRate = 25.00
     
+    // Calculate base and overtime pay
     let overtimePay = 0
     if (hours > standardHours) {
       overtimePay = (hours - standardHours) * overtimeRate
     }
     
-    const totalWage = basePay + overtimePay
+    // Calculate TL commission based on staff count
+    const tlCommission = (assignment?.staffAssigned || assignment?.staffCount || 0) * tlCommissionRate
+    
+    const totalWage = basePay + overtimePay + tlCommission
     
     setWageBreakdown({
       standardHours: Math.min(hours, standardHours),
       overtimeHours: Math.max(0, hours - standardHours),
       basePay,
       overtimePay,
+      tlCommission,
       totalWage
     })
   }
@@ -83,7 +98,9 @@ export function TimeTrackingForm({ assignment, onTimeUpdate, onClose }) {
         body: JSON.stringify({
           entryTime,
           exitTime,
-          actualHours
+          actualHours,
+          breakTime,
+          adminNotes
         })
       })
       
@@ -99,6 +116,34 @@ export function TimeTrackingForm({ assignment, onTimeUpdate, onClose }) {
       setError('Network error. Please try again.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleGeneratePDF = async (type = 'wageSlip') => {
+    setIsGeneratingPDF(true)
+    try {
+      const updatedAssignment = {
+        ...assignment,
+        actualHours: actualHours,
+        staffAssigned: assignment.staffAssigned || assignment.staffCount || 0
+      }
+      
+      if (type === 'invoice') {
+        await generateProfessionalInvoice(updatedAssignment)
+      } else {
+        // Try professional wage slip generator first, fallback to simple generator
+        try {
+          await generateWageSlipInvoice(updatedAssignment)
+        } catch (professionalError) {
+          console.warn('Professional PDF generator failed, using simple generator:', professionalError)
+          await generateSimpleWageSlip(updatedAssignment)
+        }
+      }
+    } catch (error) {
+      console.error('Error generating PDF:', error)
+      setError('Failed to generate PDF. Please try again.')
+    } finally {
+      setIsGeneratingPDF(false)
     }
   }
 
@@ -123,16 +168,17 @@ export function TimeTrackingForm({ assignment, onTimeUpdate, onClose }) {
   }
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
-        <CardTitle className="flex items-center gap-2 text-blue-800">
-          <Clock className="h-5 w-5" />
-          Time Tracking - {assignment.eventTitle}
-        </CardTitle>
-        <CardDescription>
-          Record your entry and exit times to calculate accurate wages based on actual hours worked
-        </CardDescription>
-      </CardHeader>
+    <div className="space-y-6 max-w-6xl mx-auto">
+      <Card className="w-full">
+        <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
+          <CardTitle className="flex items-center gap-2 text-blue-800">
+            <Clock className="h-5 w-5" />
+            Time Tracking - {assignment.eventTitle || assignment.event?.title}
+          </CardTitle>
+          <CardDescription>
+            Record your entry and exit times to calculate accurate wages based on actual hours worked
+          </CardDescription>
+        </CardHeader>
       
       <CardContent className="pt-6">
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -208,6 +254,41 @@ export function TimeTrackingForm({ assignment, onTimeUpdate, onClose }) {
             </div>
           </div>
           
+          {/* Break Time Input */}
+          <div className="space-y-2">
+            <Label htmlFor="breakTime" className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-gray-600" />
+              Break Time (minutes)
+            </Label>
+            <Input
+              id="breakTime"
+              type="number"
+              value={breakTime}
+              onChange={(e) => setBreakTime(parseInt(e.target.value) || 0)}
+              placeholder="0"
+              min="0"
+              max="120"
+              className="h-12"
+            />
+            <p className="text-xs text-gray-500">Enter break time in minutes (0-120)</p>
+          </div>
+
+          {/* Admin Notes */}
+          <div className="space-y-2">
+            <Label htmlFor="adminNotes" className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-gray-600" />
+              Admin Notes (Optional)
+            </Label>
+            <Textarea
+              id="adminNotes"
+              value={adminNotes}
+              onChange={(e) => setAdminNotes(e.target.value)}
+              placeholder="Any additional notes or comments..."
+              rows={3}
+              className="resize-none"
+            />
+          </div>
+
           {/* Hours Calculation */}
           {actualHours > 0 && (
             <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
@@ -233,6 +314,12 @@ export function TimeTrackingForm({ assignment, onTimeUpdate, onClose }) {
                     </Badge>
                   </div>
                 )}
+                {breakTime > 0 && (
+                  <div className="col-span-2">
+                    <span className="text-gray-600">Break Time:</span>
+                    <span className="ml-2 text-gray-700">{breakTime} minutes</span>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -256,6 +343,14 @@ export function TimeTrackingForm({ assignment, onTimeUpdate, onClose }) {
                     <span className="ml-2 font-semibold text-orange-600">₹{wageBreakdown.overtimePay}</span>
                   </div>
                 )}
+                <div className="flex items-center gap-2">
+                  <Users className="h-3 w-3 text-gray-400" />
+                  <span className="text-gray-600">TL Commission:</span>
+                  <span className="ml-2 font-semibold text-blue-600">₹{wageBreakdown.tlCommission}</span>
+                </div>
+                <div className="text-xs text-gray-500">
+                  (₹25 × {assignment?.staffAssigned || assignment?.staffCount || 0} staff)
+                </div>
                 <div className="col-span-2 pt-2 border-t border-green-200">
                   <span className="text-gray-600">Total Wage:</span>
                   <span className="ml-2 font-bold text-lg text-green-800">₹{wageBreakdown.totalWage}</span>
@@ -274,6 +369,30 @@ export function TimeTrackingForm({ assignment, onTimeUpdate, onClose }) {
             >
               Cancel
             </Button>
+            {actualHours > 0 && (
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleGeneratePDF('wageSlip')}
+                  disabled={isGeneratingPDF || loading}
+                  className="flex items-center gap-2"
+                >
+                  <FileText className="h-4 w-4" />
+                  {isGeneratingPDF ? 'Generating...' : 'Wage Slip'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleGeneratePDF('invoice')}
+                  disabled={isGeneratingPDF || loading}
+                  className="flex items-center gap-2"
+                >
+                  <DollarSign className="h-4 w-4" />
+                  {isGeneratingPDF ? 'Generating...' : 'Invoice'}
+                </Button>
+              </div>
+            )}
             <Button
               type="submit"
               disabled={loading || actualHours <= 0}
@@ -285,5 +404,18 @@ export function TimeTrackingForm({ assignment, onTimeUpdate, onClose }) {
         </form>
       </CardContent>
     </Card>
+
+    {/* Live Wage Calculation Preview */}
+    {actualHours > 0 && (
+      <>
+        <Separator />
+        <WageBreakdownDisplay
+          assignment={assignment}
+          actualHours={actualHours}
+          staffCount={assignment.staffAssigned || assignment.staffCount || 0}
+        />
+      </>
+    )}
+  </div>
   )
 }

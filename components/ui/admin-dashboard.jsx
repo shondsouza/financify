@@ -24,6 +24,10 @@ import {
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart as RechartsPieChart, Cell, AreaChart, Area, Pie } from 'recharts'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import NotificationBanner from './notification-banner'
+import TimeManagementDashboard from './time-management-dashboard'
+import { generateProfessionalWageSlip } from '@/utils/pdfWageSlipGenerator'
+import { generateSimpleWageSlip } from '@/utils/simplePdfGenerator'
+import { generateMonthlyReport } from '@/utils/pdfMonthlyReportGenerator'
 
 export default function AdminDashboard() {
   // Get user from localStorage or use default admin user
@@ -703,9 +707,31 @@ export default function AdminDashboard() {
                       <Button 
                         variant="outline" 
                         className="h-16 flex-col gap-2 hover:bg-purple-50 hover:border-purple-300 transition-colors"
+                        onClick={async () => {
+                          // Generate sample monthly report data
+                          const monthData = {
+                            monthYear: new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long' }),
+                            totalEvents: stats.totalEvents,
+                            totalRevenue: stats.totalRevenue,
+                            totalWages: stats.totalWages,
+                            events: events.slice(0, 5).map(event => ({
+                              title: event.title,
+                              client: event.client,
+                              eventDate: event.eventDate,
+                              staffCount: event.staffNeeded,
+                              revenue: event.expectedRevenue || 0,
+                              wages: event.staffNeeded * 350 // Sample calculation
+                            })),
+                            teamLeaders: [
+                              { name: 'John Smith', eventsAssigned: 5, totalHours: 35, totalEarnings: 1750, avgRating: 4.8, efficiency: 'Excellent' },
+                              { name: 'Sarah Johnson', eventsAssigned: 3, totalHours: 21, totalEarnings: 1050, avgRating: 4.6, efficiency: 'Good' }
+                            ]
+                          }
+                          await generateMonthlyReport(monthData)
+                        }}
                       >
                         <BarChart3 className="h-5 w-5" />
-                        View Reports
+                        Monthly Report
                       </Button>
                       <Button 
                         variant="outline" 
@@ -786,6 +812,10 @@ export default function AdminDashboard() {
                   events={events}
                   formatDate={formatDate}
                 />
+              </TabsContent>
+
+              <TabsContent value="time-management">
+                <TimeManagementDashboard />
               </TabsContent>
 
               <TabsContent value="settings" className="space-y-6">
@@ -896,6 +926,7 @@ function SidebarContent({ setSidebarOpen, activeTab, setActiveTab }) {
     { id: 'overview', label: 'Overview', icon: Home },
     { id: 'events', label: 'Events', icon: Calendar },
     { id: 'assignments', label: 'Assignments', icon: Users },
+    { id: 'time-management', label: 'Time Management', icon: Clock },
     { id: 'settings', label: 'Settings', icon: Settings },
   ]
 
@@ -1223,9 +1254,27 @@ function AssignmentsTab({ events, formatDate }) {
                                 <Square className="h-3 w-3 text-red-600 flex-shrink-0 fill-current" />
                                 <span>{new Date(assignment.exitTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
                               </div>
-                              <Badge variant="outline" className="text-xs text-green-600 bg-green-50 border-green-200 mt-1">
-                                Completed
-                              </Badge>
+                              <div className="flex gap-1 mt-2">
+                                <Badge variant="outline" className="text-xs text-green-600 bg-green-50 border-green-200">
+                                  Completed
+                                </Badge>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={async () => {
+                                    try {
+                                      await generateProfessionalWageSlip(assignment)
+                                    } catch (error) {
+                                      console.warn('Professional PDF generator failed, using simple generator:', error)
+                                      await generateSimpleWageSlip(assignment)
+                                    }
+                                  }}
+                                  className="h-5 px-2 text-xs"
+                                >
+                                  <FileText className="h-3 w-3 mr-1" />
+                                  PDF
+                                </Button>
+                              </div>
                             </div>
                           ) : (
                             <div className="flex items-center text-xs text-gray-500">
