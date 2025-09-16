@@ -481,4 +481,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 **Built with ❤️ for workforce management teams worldwide**
 
-*Transform your manual processes into streamlined digital workflows!*
+Transform your manual processes into streamlined digital workflows!
