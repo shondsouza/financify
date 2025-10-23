@@ -9,6 +9,15 @@ export default function useSimpleChat(currentUserId, peerUserId) {
   const [messages, setMessages] = useState([])
 
   const init = useCallback(async () => {
+    if (!currentUserId || !peerUserId) {
+      console.log('⚠️ Chat init skipped - missing user IDs:', { currentUserId, peerUserId })
+      setMessages([])
+      setConversation(null)
+      setLoading(false)
+      return
+    }
+
+    console.log('🔄 Chat init - Loading conversation:', { currentUserId, peerUserId })
     setLoading(true)
     setError(null)
     
@@ -17,14 +26,27 @@ export default function useSimpleChat(currentUserId, peerUserId) {
       const { data: conv, error: convError } = await getOrCreateConversation(currentUserId, peerUserId)
       if (convError) throw convError
       
+      console.log('✅ Conversation loaded:', { 
+        conversationId: conv.id, 
+        user_a: conv.user_a, 
+        user_b: conv.user_b 
+      })
+      
       setConversation(conv)
       
       // Load messages
       const { data: msgs, error: msgError } = await getMessages(conv.id, 200)
       if (msgError) throw msgError
       
+      console.log('📨 Messages loaded:', { 
+        conversationId: conv.id, 
+        messageCount: msgs.length,
+        messages: msgs 
+      })
+      
       setMessages(msgs)
     } catch (e) {
+      console.error('❌ Chat init error:', e)
       setError(e)
     } finally {
       setLoading(false)
@@ -33,7 +55,12 @@ export default function useSimpleChat(currentUserId, peerUserId) {
 
   // Set up real-time subscription
   useEffect(() => {
-    if (!conversation?.id) return
+    if (!conversation?.id) {
+      console.log('⚠️ Realtime subscription skipped - no conversation ID')
+      return
+    }
+
+    console.log('🔌 Setting up realtime subscription for conversation:', conversation.id)
 
     // Subscribe to real-time changes for this conversation
     const subscription = chatSupabase
@@ -47,6 +74,7 @@ export default function useSimpleChat(currentUserId, peerUserId) {
           filter: `conversation_id=eq.${conversation.id}`
         },
         (payload) => {
+          console.log('🔔 New message received via realtime:', payload.new)
           // Add new message to the list
           setMessages(prev => [...prev, payload.new])
         }
@@ -55,6 +83,7 @@ export default function useSimpleChat(currentUserId, peerUserId) {
 
     // Cleanup subscription on unmount or conversation change
     return () => {
+      console.log('🚫 Unsubscribing from conversation:', conversation.id)
       subscription.unsubscribe()
     }
   }, [conversation?.id])

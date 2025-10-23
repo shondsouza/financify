@@ -4,14 +4,13 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { 
   Plus, Users, UserPlus, Eye, EyeOff, Copy, Trash2, Edit, 
-  Phone, Mail, Calendar, Shield, CheckCircle, XCircle 
+  Phone, Mail, Calendar, Shield, CheckCircle, XCircle, Search, Filter 
 } from 'lucide-react'
 import { userManagement } from '@/lib/userManagement'
 
@@ -22,6 +21,8 @@ export default function UserManagement() {
   const [showCredentials, setShowCredentials] = useState({})
   const [selectedUser, setSelectedUser] = useState(null)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [filterStatus, setFilterStatus] = useState('all')
 
   // Form data for creating new team leader
   const [formData, setFormData] = useState({
@@ -79,15 +80,17 @@ export default function UserManagement() {
       })
 
       if (error) {
-        setFormErrors({ submit: error.message })
+        setFormErrors({ submit: error.message || 'Failed to create team leader' })
       } else {
+        // Show success with credentials
         setCreatedUser({ ...data, password })
         setFormData({ name: '', email: '', phone: '', password: '' })
         setShowCreateForm(false)
         loadTeamLeaders() // Refresh list
       }
     } catch (error) {
-      setFormErrors({ submit: 'Failed to create team leader' })
+      console.error('Create user error:', error)
+      setFormErrors({ submit: 'Failed to create team leader. Please try again.' })
     } finally {
       setSubmitting(false)
     }
@@ -99,6 +102,7 @@ export default function UserManagement() {
       const { error } = await userManagement.deactivateTeamLeader(userId)
       if (error) {
         console.error('Failed to deactivate user:', error)
+        alert('Failed to deactivate user. Please try again.')
       } else {
         loadTeamLeaders() // Refresh list
         setShowDeleteDialog(false)
@@ -106,20 +110,64 @@ export default function UserManagement() {
       }
     } catch (error) {
       console.error('Error deactivating user:', error)
+      alert('Failed to deactivate user. Please try again.')
+    }
+  }
+
+  // Handle user reactivation
+  const handleReactivate = async (userId) => {
+    try {
+      const { error } = await userManagement.updateTeamLeader(userId, { isActive: true })
+      if (error) {
+        console.error('Failed to reactivate user:', error)
+        alert('Failed to reactivate user. Please try again.')
+      } else {
+        loadTeamLeaders() // Refresh list
+      }
+    } catch (error) {
+      console.error('Error reactivating user:', error)
+      alert('Failed to reactivate user. Please try again.')
     }
   }
 
   // Copy credentials to clipboard
   const copyCredentials = (text) => {
     navigator.clipboard.writeText(text)
-    // You could add a toast notification here
+    // Show a brief success indication
+    alert('Copied to clipboard!')
+  }
+
+  // Copy full credentials
+  const copyFullCredentials = (user) => {
+    const credentials = `Email: ${user.email}\nPassword: ${user.password}`
+    navigator.clipboard.writeText(credentials)
+    alert('Credentials copied to clipboard!')
   }
 
   // Generate new password
   const generatePassword = () => {
-    const newPassword = userManagement.generatePassword()
+    const newPassword = userManagement.generatePassword(12) // Longer password for better security
     setFormData(prev => ({ ...prev, password: newPassword }))
   }
+
+  // Filter team leaders based on search and status
+  const filteredTeamLeaders = teamLeaders.filter(tl => {
+    // Status filter
+    if (filterStatus === 'active' && !tl.isActive) return false
+    if (filterStatus === 'inactive' && tl.isActive) return false
+    
+    // Search filter
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase()
+      return (
+        tl.name.toLowerCase().includes(search) ||
+        tl.email.toLowerCase().includes(search) ||
+        (tl.phone && tl.phone.includes(search))
+      )
+    }
+    
+    return true
+  })
 
   return (
     <div className="space-y-6">
@@ -189,16 +237,56 @@ export default function UserManagement() {
         <CardHeader>
           <CardTitle>Team Leaders</CardTitle>
           <CardDescription>Manage team leader accounts and credentials</CardDescription>
+          
+          {/* Search and Filter Bar */}
+          <div className="flex flex-col sm:flex-row gap-4 mt-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search by name, email, or phone..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant={filterStatus === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilterStatus('all')}
+              >
+                All ({teamLeaders.length})
+              </Button>
+              <Button
+                variant={filterStatus === 'active' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilterStatus('active')}
+              >
+                Active ({teamLeaders.filter(tl => tl.isActive).length})
+              </Button>
+              <Button
+                variant={filterStatus === 'inactive' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilterStatus('inactive')}
+              >
+                Inactive ({teamLeaders.filter(tl => !tl.isActive).length})
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
             </div>
-          ) : teamLeaders.length === 0 ? (
+          ) : filteredTeamLeaders.length === 0 ? (
             <div className="text-center py-8">
               <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">No team leaders found</p>
+              <p className="text-gray-600">
+                {searchTerm || filterStatus !== 'all' 
+                  ? 'No team leaders match your search criteria' 
+                  : 'No team leaders found'}
+              </p>
             </div>
           ) : (
             <Table>
@@ -213,11 +301,11 @@ export default function UserManagement() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {teamLeaders.map((user) => (
+                {filteredTeamLeaders.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell className="font-medium">{user.name}</TableCell>
                     <TableCell>{user.email}</TableCell>
-                    <TableCell>{user.phone}</TableCell>
+                    <TableCell>{user.phone || 'N/A'}</TableCell>
                     <TableCell>
                       <Badge variant={user.isActive ? "default" : "secondary"}>
                         {user.isActive ? 'Active' : 'Inactive'}
@@ -232,6 +320,7 @@ export default function UserManagement() {
                           size="sm"
                           variant="outline"
                           onClick={() => setShowCredentials({ ...showCredentials, [user.id]: !showCredentials[user.id] })}
+                          title="View credentials"
                         >
                           {showCredentials[user.id] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </Button>
@@ -239,19 +328,32 @@ export default function UserManagement() {
                           size="sm"
                           variant="outline"
                           onClick={() => setSelectedUser(user)}
+                          title="Edit user"
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedUser(user)
-                            setShowDeleteDialog(true)
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {user.isActive ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedUser(user)
+                              setShowDeleteDialog(true)
+                            }}
+                            title="Deactivate user"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleReactivate(user.id)}
+                            title="Reactivate user"
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -344,50 +446,105 @@ export default function UserManagement() {
       {/* Credentials Display */}
       {createdUser && (
         <Dialog open={!!createdUser} onOpenChange={() => setCreatedUser(null)}>
-          <DialogContent>
+          <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>Team Leader Created Successfully</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                Team Leader Created Successfully
+              </DialogTitle>
               <DialogDescription>
-                Save these credentials securely. They will be needed for login.
+                Save these credentials securely. The team leader will use them to log in to the Financify platform.
               </DialogDescription>
             </DialogHeader>
             
             <div className="space-y-4">
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <h4 className="font-medium mb-2">Login Credentials</h4>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Email:</span>
-                    <div className="flex items-center space-x-2">
-                      <code className="text-sm">{createdUser.email}</code>
-                      <Button size="sm" variant="outline" onClick={() => copyCredentials(createdUser.email)}>
+              {/* User Info */}
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                  <UserPlus className="h-4 w-4" />
+                  Account Details
+                </h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-blue-700 font-medium">Name:</span>
+                    <span className="text-blue-900">{createdUser.name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-blue-700 font-medium">Email:</span>
+                    <span className="text-blue-900">{createdUser.email}</span>
+                  </div>
+                  {createdUser.phone && (
+                    <div className="flex justify-between">
+                      <span className="text-blue-700 font-medium">Phone:</span>
+                      <span className="text-blue-900">{createdUser.phone}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Login Credentials */}
+              <div className="p-4 bg-gray-50 rounded-lg border-2 border-gray-300">
+                <h4 className="font-semibold mb-3 flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  Login Credentials
+                </h4>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs text-gray-600 block mb-1">Email Address</label>
+                    <div className="flex items-center gap-2">
+                      <Input value={createdUser.email} readOnly className="bg-white" />
+                      <Button size="sm" variant="outline" onClick={() => copyCredentials(createdUser.email)} title="Copy email">
                         <Copy className="h-3 w-3" />
                       </Button>
                     </div>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Password:</span>
-                    <div className="flex items-center space-x-2">
-                      <code className="text-sm">{createdUser.password}</code>
-                      <Button size="sm" variant="outline" onClick={() => copyCredentials(createdUser.password)}>
+                  <div>
+                    <label className="text-xs text-gray-600 block mb-1">Password</label>
+                    <div className="flex items-center gap-2">
+                      <Input 
+                        value={createdUser.password} 
+                        readOnly 
+                        className="bg-white font-mono text-lg tracking-wider" 
+                      />
+                      <Button size="sm" variant="outline" onClick={() => copyCredentials(createdUser.password)} title="Copy password">
                         <Copy className="h-3 w-3" />
                       </Button>
                     </div>
                   </div>
+                  <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    className="w-full"
+                    onClick={() => copyFullCredentials(createdUser)}
+                  >
+                    <Copy className="h-3 w-3 mr-2" />
+                    Copy All Credentials
+                  </Button>
                 </div>
               </div>
               
-              <Alert>
-                <Shield className="h-4 w-4" />
-                <AlertDescription>
-                  <strong>Important:</strong> Save these credentials securely. The password cannot be recovered.
+              <Alert className="border-yellow-300 bg-yellow-50">
+                <Shield className="h-4 w-4 text-yellow-600" />
+                <AlertDescription className="text-yellow-800">
+                  <strong>Important Security Notice:</strong>
+                  <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
+                    <li>Share these credentials securely with the team leader</li>
+                    <li>The password cannot be recovered later</li>
+                    <li>Recommend the team leader to change their password after first login</li>
+                  </ul>
                 </AlertDescription>
               </Alert>
             </div>
             
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => {
+                copyFullCredentials(createdUser)
+              }}>
+                <Copy className="h-4 w-4 mr-2" />
+                Copy & Close
+              </Button>
               <Button onClick={() => setCreatedUser(null)}>
-                Done
+                I've Saved the Credentials
               </Button>
             </div>
           </DialogContent>

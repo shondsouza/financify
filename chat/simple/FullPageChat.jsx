@@ -9,14 +9,62 @@ export default function FullPageChat({ currentUserId, onBack }) {
   const [showDeleteOption, setShowDeleteOption] = useState(null)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const bottomRef = useRef(null)
+  
+  // Dynamic user list from database
+  const [availableUsers, setAvailableUsers] = useState([])
+  const [usersLoading, setUsersLoading] = useState(true)
 
-  // Mock users for demo - replace with real user data
-  const availableUsers = [
-    { id: 'admin-1', name: 'System Admin', role: 'admin', avatar: '/avatar/Admin.png' },
-    { id: 'tl-1', name: 'John Smith', role: 'team_leader', avatar: '/avatar/person.png' },
-    { id: 'tl-2', name: 'Sarah Johnson', role: 'team_leader', avatar: '/avatar/person.png' },
-    { id: 'tl-3', name: 'Mike Wilson', role: 'team_leader', avatar: '/avatar/person.png' }
-  ]
+  console.log('👥 FullPageChat rendered with currentUserId:', currentUserId)
+
+  // Load all users from database
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        setUsersLoading(true)
+        console.log('📥 Loading users from database...')
+        
+        const response = await fetch('/api/users')
+        if (response.ok) {
+          const users = await response.json()
+          console.log('✅ Loaded users:', users)
+          
+          // Format users for chat
+          const formattedUsers = users
+            .filter(user => user.isActive) // Only active users
+            .map(user => ({
+              id: user.id,
+              name: user.name,
+              email: user.email,
+              role: user.role,
+              avatar: user.role === 'admin' ? '/avatar/Admin.png' : '/avatar/person.png'
+            }))
+          
+          setAvailableUsers(formattedUsers)
+          console.log('👥 Available users for chat:', formattedUsers.length)
+        } else {
+          console.error('Failed to load users')
+          // Fallback to hardcoded users if API fails
+          setAvailableUsers([
+            { id: 'admin-1', name: 'System Admin', role: 'admin', avatar: '/avatar/Admin.png' },
+            { id: 'tl-1', name: 'John Smith', role: 'team_leader', avatar: '/avatar/person.png' },
+            { id: 'tl-2', name: 'Sarah Johnson', role: 'team_leader', avatar: '/avatar/person.png' },
+            { id: 'tl-3', name: 'Mike Wilson', role: 'team_leader', avatar: '/avatar/person.png' }
+          ])
+        }
+      } catch (error) {
+        console.error('Error loading users:', error)
+        // Fallback to hardcoded users
+        setAvailableUsers([
+          { id: 'admin-1', name: 'System Admin', role: 'admin', avatar: '/avatar/Admin.png' },
+          { id: 'tl-1', name: 'John Smith', role: 'team_leader', avatar: '/avatar/person.png' }
+        ])
+      } finally {
+        setUsersLoading(false)
+      }
+    }
+
+    loadUsers()
+  }, []) // Load once on mount
 
   // Filter out current user from available users
   const otherUsers = availableUsers.filter(user => user.id !== currentUserId)
@@ -25,6 +73,15 @@ export default function FullPageChat({ currentUserId, onBack }) {
     currentUserId, 
     selectedPeer?.id
   )
+
+  // Debug: Log when selectedPeer changes
+  useEffect(() => {
+    console.log('👤 Selected peer changed:', { 
+      peerName: selectedPeer?.name, 
+      peerId: selectedPeer?.id,
+      currentUserId 
+    })
+  }, [selectedPeer, currentUserId])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -60,8 +117,16 @@ export default function FullPageChat({ currentUserId, onBack }) {
   }
 
   const getCurrentUser = () => {
-    return availableUsers.find(user => user.id === currentUserId) || 
-           { id: currentUserId, name: 'Unknown User', role: 'user', avatar: '/avatar/person.png' }
+    const user = availableUsers.find(user => user.id === currentUserId)
+    if (user) return user
+    
+    // If current user not in list yet, create a temporary entry
+    return { 
+      id: currentUserId, 
+      name: 'You', 
+      role: 'user', 
+      avatar: '/avatar/person.png' 
+    }
   }
 
   const currentUser = getCurrentUser()
@@ -98,39 +163,51 @@ export default function FullPageChat({ currentUserId, onBack }) {
         <div className="flex-1 overflow-y-auto">
           <div className="p-2">
             <h3 className="text-sm font-medium text-gray-500 mb-2">Team Members</h3>
-            {otherUsers.map((user) => (
-              <div
-                key={user.id}
-                onClick={() => setSelectedPeer(user)}
-                className={`p-3 rounded-lg cursor-pointer transition-colors mb-2 ${
-                  selectedPeer?.id === user.id 
-                    ? 'bg-blue-100 border-l-4 border-blue-500' 
-                    : 'hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center overflow-hidden">
-                    <img 
-                      src={user.avatar} 
-                      alt={user.name}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.target.style.display = 'none'
-                        e.target.nextSibling.style.display = 'flex'
-                      }}
-                    />
-                    <div className="w-full h-full bg-gray-400 flex items-center justify-center text-white font-semibold" style={{display: 'none'}}>
-                      {user.name.charAt(0)}
-                    </div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 truncate">{user.name}</p>
-                    <p className="text-sm text-gray-500 capitalize">{user.role.replace('_', ' ')}</p>
-                  </div>
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                </div>
+            
+            {usersLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="text-gray-500 text-sm">Loading users...</div>
               </div>
-            ))}
+            ) : otherUsers.length === 0 ? (
+              <div className="text-center py-8 text-gray-500 text-sm">
+                <User className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                <p>No other users found</p>
+              </div>
+            ) : (
+              otherUsers.map((user) => (
+                <div
+                  key={user.id}
+                  onClick={() => setSelectedPeer(user)}
+                  className={`p-3 rounded-lg cursor-pointer transition-colors mb-2 ${
+                    selectedPeer?.id === user.id 
+                      ? 'bg-blue-100 border-l-4 border-blue-500' 
+                      : 'hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center overflow-hidden">
+                      <img 
+                        src={user.avatar} 
+                        alt={user.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.style.display = 'none'
+                          e.target.nextSibling.style.display = 'flex'
+                        }}
+                      />
+                      <div className="w-full h-full bg-gray-400 flex items-center justify-center text-white font-semibold" style={{display: 'none'}}>
+                        {user.name.charAt(0)}
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900 truncate">{user.name}</p>
+                      <p className="text-sm text-gray-500 capitalize">{user.role.replace('_', ' ')}</p>
+                    </div>
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 

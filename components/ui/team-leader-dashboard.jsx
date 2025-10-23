@@ -272,9 +272,17 @@ const LineChartComponent = ({ data }) => {
   )
 }
 
-export default function TeamLeaderDashboard() {
-  // Team leader user - will be loaded from database
-  const [user, setUser] = useState({ id: null, name: 'Loading...' })
+export default function TeamLeaderDashboard({ user: propUser }) {
+  // Use the user from props (logged in user) instead of loading from database
+  const [user, setUser] = useState(propUser || { id: null, name: 'Loading...' })
+  
+  // Update user when prop changes (user logs in/out)
+  useEffect(() => {  
+    if (propUser) {
+      console.log('👤 TeamLeader Dashboard - Using logged in user:', propUser)
+      setUser(propUser)
+    }
+  }, [propUser])
   
   const [events, setEvents] = useState([])
   const [eventsLoading, setEventsLoading] = useState(true)
@@ -334,33 +342,21 @@ export default function TeamLeaderDashboard() {
   const [selectedAssignment, setSelectedAssignment] = useState(null)
   const [showTimeTracking, setShowTimeTracking] = useState(false)
 
-  // Load team leader user from database
-  const loadTeamLeaderUser = async () => {
-    try {
-      console.log('Loading team leader user...')
-      const { data: teamLeaderUser, error } = await dbOperations.ensureTeamLeaderUser()
-      if (error) {
-        console.error('Failed to load team leader user:', error)
-        return
-      }
-      console.log('Loaded team leader user:', teamLeaderUser)
-      setUser(teamLeaderUser)
-    } catch (error) {
-      console.error('Failed to load team leader user:', error)
-    }
-  }
-
   // Load team leader assignments from database
   const loadAssignments = async () => {
+    if (!user?.id) {
+      console.log('⚠️ Cannot load assignments - no user ID')
+      return
+    }
+
     try {
       setLoading(true)
-      console.log('Loading assignments for user ID:', user.id)
+      console.log('📋 Loading assignments for user ID:', user.id)
       const response = await fetch(`/api/team-leader-assignments/${user.id}`)
       console.log('Assignment response status:', response.status)
       if (response.ok) {
         const assignments = await response.json()
         console.log('Loaded assignments:', assignments)
-        console.log('Assignment count before deduplication:', assignments.length)
         // Transform database assignments to match UI format
         const transformedAssignments = assignments.map(assignment => ({
           id: assignment.id,
@@ -378,14 +374,8 @@ export default function TeamLeaderDashboard() {
           exitTime: assignment.exitTime
         }))
         
-        // Deduplicate assignments by ID to prevent any duplicates
-        const uniqueAssignments = transformedAssignments.filter((assignment, index, self) => 
-          index === self.findIndex(a => a.id === assignment.id)
-        )
-        
-        console.log('Assignment count after deduplication:', uniqueAssignments.length)
-        console.log('Transformed assignments:', uniqueAssignments)
-        setMyAssignments(uniqueAssignments)
+        setMyAssignments(transformedAssignments)
+        console.log('✅ Loaded', transformedAssignments.length, 'assignments')
       } else {
         const errorData = await response.json()
         console.error('Failed to load assignments:', errorData)
@@ -397,13 +387,14 @@ export default function TeamLeaderDashboard() {
     }
   }
 
-  // Load user and assignments on component mount and listen for updates
+  // Load user and assignments on component mount
   useEffect(() => {
-    const initializeDashboard = async () => {
-      await loadTeamLeaderUser()
+    // User is loaded from props, just load assignments when user is available
+    if (user?.id) {
+      console.log('🔄 Loading assignments for user:', user.id)
+      loadAssignments()
     }
-    initializeDashboard()
-  }, [])
+  }, [user?.id])
 
   // Set up event listeners for assignment updates
   useEffect(() => {
@@ -1216,7 +1207,7 @@ export default function TeamLeaderDashboard() {
 
           <TabsContent value="chat">
             <div className="h-[calc(100vh-200px)]">
-              <ChatPage currentUserId={(user && user.id) || 'tl-1'} />
+              <ChatPage currentUserId={user?.id} />
             </div>
           </TabsContent>
         </Tabs>

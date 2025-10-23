@@ -20,19 +20,38 @@ export function AuthForm({ onLogin }) {
     setError('')
 
     try {
-      // Simple auth simulation - in production use proper authentication
+      // Get user by email
       const { data: user, error } = await dbOperations.getUserByEmail(email)
       
       if (error || !user) {
-        setError('Invalid credentials. Use demo accounts: admin@company.com or shon@company.com')
+        setError('Invalid email or password. Please check your credentials.')
         setLoading(false)
         return
       }
 
-      // Store user in localStorage for demo
+      // Check if user is active
+      if (!user.isActive) {
+        setError('Your account has been deactivated. Please contact administrator.')
+        setLoading(false)
+        return
+      }
+
+      // Verify password (in production, use proper password hashing comparison)
+      // For demo purposes, we accept any password for demo accounts or check stored password
+      const isDemoAccount = ['admin@company.com', 'john@company.com', 'sarah@company.com', 'mike@company.com'].includes(email.toLowerCase())
+      const isPasswordValid = isDemoAccount || (user.password && password === user.password)
+      
+      if (!isPasswordValid) {
+        setError('Invalid email or password. Please check your credentials.')
+        setLoading(false)
+        return
+      }
+
+      // Store user in localStorage
       localStorage.setItem('currentUser', JSON.stringify(user))
       onLogin(user)
     } catch (err) {
+      console.error('Login error:', err)
       setError('Login failed. Please try again.')
     } finally {
       setLoading(false)

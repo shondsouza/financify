@@ -14,6 +14,7 @@ CREATE TABLE users (
   name TEXT NOT NULL,
   role TEXT NOT NULL CHECK (role IN ('admin', 'team_leader')),
   phone TEXT,
+  password TEXT,
   "isActive" BOOLEAN DEFAULT true,
   "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -113,11 +114,11 @@ CREATE TRIGGER update_events_timestamp
   EXECUTE FUNCTION update_timestamp();
 
 -- Insert sample data
-INSERT INTO users (id, email, name, role, phone) VALUES 
-  ('admin-1', 'admin@company.com', 'System Admin', 'admin', '+91-9876543210'),
-  ('tl-1', 'john@company.com', 'john Smith', 'team_leader', '+91-9876543211'),
-  ('tl-2', 'sarah@company.com', 'Sarah johnson', 'team_leader', '+91-9876543212'),
-  ('tl-3', 'mike@company.com', 'Mike Wilson', 'team_leader', '+91-9876543213');
+INSERT INTO users (id, email, name, role, phone, password) VALUES 
+  ('admin-1', 'admin@company.com', 'System Admin', 'admin', '+91-9876543210', 'demo123'),
+  ('tl-1', 'john@company.com', 'john Smith', 'team_leader', '+91-9876543211', 'demo123'),
+  ('tl-2', 'sarah@company.com', 'Sarah johnson', 'team_leader', '+91-9876543212', 'demo123'),
+  ('tl-3', 'mike@company.com', 'Mike Wilson', 'team_leader', '+91-9876543213', 'demo123');
 
 -- Insert sample events
 INSERT INTO events (id, title, client, "eventType", "eventDate", location, "staffNeeded", "expectedRevenue", "budgetAllocated", "createdBy") VALUES 
