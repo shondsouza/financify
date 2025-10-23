@@ -12,9 +12,10 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { CheckCircle, XCircle, Calendar, MapPin, Users, DollarSign, Clock, AlertTriangle, ThumbsUp, ThumbsDown, Play, Square, TrendingUp, BarChart3, PieChart, Activity } from 'lucide-react'
+import { CheckCircle, XCircle, Calendar, MapPin, Users, DollarSign, Clock, AlertTriangle, ThumbsUp, ThumbsDown, Play, Square, TrendingUp, BarChart3, PieChart, Activity, MessageSquare, RefreshCw } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import NotificationBanner from './notification-banner'
+import ChatPage from '../../chat/simple/ChatPage'
 
 // Dynamically import Recharts components to avoid SSR issues
 const RechartsComponents = dynamic(() => import('recharts'), { 
@@ -275,124 +276,51 @@ export default function TeamLeaderDashboard() {
   // Team leader user - will be loaded from database
   const [user, setUser] = useState({ id: null, name: 'Loading...' })
   
-  // Enhanced mock data with more realistic information
-  const [events, setEvents] = useState([
-    {
-      id: 1,
-      title: 'Corporate Annual Conference',
-      client: 'TechCorp Solutions',
-      eventType: 'Conference',
-      eventDate: '2025-09-15T09:00:00',
-      location: 'Bengaluru Convention Center',
-      staffNeeded: 8,
-      expectedRevenue: 45000,
-      status: 'open',
-      requirements: 'Experience with AV equipment, formal attire required',
-      responses: []
-    },
-    {
-      id: 2,
-      title: 'Wedding Reception',
-      client: 'Sharma Family',
-      eventType: 'Wedding',
-      eventDate: '2025-09-20T18:00:00',
-      location: 'Grand Palace Hotel, Mysuru',
-      staffNeeded: 12,
-      expectedRevenue: 68000,
-      status: 'open',
-      requirements: 'Traditional Indian wedding experience preferred',
-      responses: [
-        { teamLeaderId: 1, available: true, staffCount: 10, message: 'Ready to handle this event' }
-      ]
-    },
-    {
-      id: 3,
-      title: 'Product Launch Event',
-      client: 'StartupXYZ',
-      eventType: 'Corporate',
-      eventDate: '2025-09-25T14:00:00',
-      location: 'Tech Park, Electronic City',
-      staffNeeded: 6,
-      expectedRevenue: 32000,
-      status: 'open',
-      requirements: 'Tech-savvy staff, casual dress code',
-      responses: []
-    }
-  ])
+  const [events, setEvents] = useState([])
+  const [eventsLoading, setEventsLoading] = useState(true)
 
-  // Sync events with Admin's localStorage so TL sees newly created events
-  useEffect(() => {
+  // Fetch events from API
+  const fetchEvents = async () => {
+    setEventsLoading(true)
     try {
-      const saved = typeof window !== 'undefined' ? localStorage.getItem('admin_events') : null
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed)) {
-          setEvents(parsed)
-        }
+      const response = await fetch('/api/events')
+      if (response.ok) {
+        const eventsData = await response.json()
+        setEvents(eventsData || [])
+      } else {
+        console.error('Failed to fetch events:', response.statusText)
+        setEvents([])
       }
-    } catch (err) {
-      // ignore malformed data
+    } catch (error) {
+      console.error('Error fetching events:', error)
+      setEvents([])
+    } finally {
+      setEventsLoading(false)
     }
+  }
 
-    const handleStorage = (e) => {
-      if (e.key === 'admin_events') {
-        try {
-          const updated = e.newValue ? JSON.parse(e.newValue) : null
-          if (Array.isArray(updated)) {
-            // Merge responses from current state to preserve team leader responses
-            setEvents(prevEvents => {
-              const mergedEvents = updated.map(newEvent => {
-                const existingEvent = prevEvents.find(prev => prev.id === newEvent.id)
-                if (existingEvent && existingEvent.responses) {
-                  // Preserve existing responses from team leader's view
-                  return { ...newEvent, responses: existingEvent.responses }
-                }
-                return newEvent
-              })
-              return mergedEvents
-            })
-          }
-        } catch (err) {
-          // ignore
-        }
-      }
-    }
+  // Load events on component mount
+  useEffect(() => {
+    fetchEvents()
+  }, [])
 
-    const handleCustomUpdate = () => {
-      try {
-        const savedNow = typeof window !== 'undefined' ? localStorage.getItem('admin_events') : null
-        if (savedNow) {
-          const parsedNow = JSON.parse(savedNow)
-          if (Array.isArray(parsedNow)) {
-            // Merge responses from current state to preserve team leader responses
-            setEvents(prevEvents => {
-              const mergedEvents = parsedNow.map(newEvent => {
-                const existingEvent = prevEvents.find(prev => prev.id === newEvent.id)
-                if (existingEvent && existingEvent.responses) {
-                  // Preserve existing responses from team leader's view
-                  return { ...newEvent, responses: existingEvent.responses }
-                }
-                return newEvent
-              })
-              return mergedEvents
-            })
-          }
-        }
-      } catch (_) {}
+  // Listen for event updates
+  useEffect(() => {
+    const handleEventUpdate = () => {
+      fetchEvents()
     }
 
     if (typeof window !== 'undefined') {
-      window.addEventListener('storage', handleStorage)
-      window.addEventListener('admin_events_updated', handleCustomUpdate)
+      window.addEventListener('admin_events_updated', handleEventUpdate)
     }
 
     return () => {
       if (typeof window !== 'undefined') {
-        window.removeEventListener('storage', handleStorage)
-        window.removeEventListener('admin_events_updated', handleCustomUpdate)
+        window.removeEventListener('admin_events_updated', handleEventUpdate)
       }
     }
-    }, [])
+  }, [])
+
 
   const [myAssignments, setMyAssignments] = useState([])
 
@@ -475,17 +403,23 @@ export default function TeamLeaderDashboard() {
       await loadTeamLeaderUser()
     }
     initializeDashboard()
-    
-    // Listen for assignment updates from admin
+  }, [])
+
+  // Set up event listeners for assignment updates
+  useEffect(() => {
     const handleAssignmentUpdate = () => {
+      console.log('Assignment update event received, user ID:', user.id)
       if (user.id) {
         loadAssignments()
+      } else {
+        console.log('User ID not available yet, will retry when user is loaded')
       }
     }
     
     if (typeof window !== 'undefined') {
       window.addEventListener('assignment_created', handleAssignmentUpdate)
       window.addEventListener('admin_events_updated', handleAssignmentUpdate)
+      console.log('Event listeners set up for assignment updates')
     }
     
     return () => {
@@ -494,7 +428,7 @@ export default function TeamLeaderDashboard() {
         window.removeEventListener('admin_events_updated', handleAssignmentUpdate)
       }
     }
-  }, [])
+  }, [user.id]) // Re-run when user.id changes
 
   // Load assignments when user is loaded
   useEffect(() => {
@@ -816,7 +750,7 @@ export default function TeamLeaderDashboard() {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="available" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid bg-white shadow-md">
+          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid bg-white shadow-md">
             <TabsTrigger value="available" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
               Available Events
             </TabsTrigger>
@@ -825,6 +759,9 @@ export default function TeamLeaderDashboard() {
             </TabsTrigger>
             <TabsTrigger value="earnings" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
               Earnings & Analytics
+            </TabsTrigger>
+            <TabsTrigger value="chat" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+              <span className="inline-flex items-center gap-2"><MessageSquare className="h-4 w-4"/> Chat</span>
             </TabsTrigger>
           </TabsList>
 
@@ -843,7 +780,15 @@ export default function TeamLeaderDashboard() {
             </div>
 
             <div className="grid gap-6">
-              {openEvents.length === 0 ? (
+              {eventsLoading ? (
+                <Card className="border-0 shadow-lg">
+                  <CardContent className="py-16 text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                    <h3 className="text-2xl font-semibold text-gray-900 mb-2">Loading Events...</h3>
+                    <p className="text-gray-600 text-lg">Fetching available assignments...</p>
+                  </CardContent>
+                </Card>
+              ) : openEvents.length === 0 ? (
                 <Card className="border-0 shadow-lg">
                   <CardContent className="py-16 text-center">
                     <div className="w-24 h-24 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -989,6 +934,15 @@ export default function TeamLeaderDashboard() {
                   <h2 className="text-3xl font-bold text-gray-900">My Current Assignments</h2>
                   <p className="text-gray-600">Track your assigned events and their status</p>
                 </div>
+                <Button
+                  onClick={loadAssignments}
+                  disabled={loading}
+                  variant="outline"
+                  className="flex items-center space-x-2"
+                >
+                  <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                  <span>Refresh</span>
+                </Button>
               </div>
 
               {myAssignments.length === 0 ? (
@@ -1257,6 +1211,12 @@ export default function TeamLeaderDashboard() {
                   </CardContent>
                 </Card>
               ) : null}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="chat">
+            <div className="h-[calc(100vh-200px)]">
+              <ChatPage currentUserId={(user && user.id) || 'tl-1'} />
             </div>
           </TabsContent>
         </Tabs>

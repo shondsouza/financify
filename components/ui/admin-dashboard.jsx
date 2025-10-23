@@ -19,7 +19,7 @@ import {
   AlertTriangle, TrendingUp, MapPin, Building, Star, Eye,
   Filter, Download, RefreshCw, BarChart3, PieChart, Search,
   Zap, Target, Award, Activity, Play, Square, Menu, X,
-  Home, Settings, Bell, ChevronRight, ArrowUp, ArrowDown
+  Home, Settings, Bell, ChevronRight, ArrowUp, ArrowDown, MessageSquare
 } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart as RechartsPieChart, Cell, AreaChart, Area, Pie } from 'recharts'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
@@ -28,6 +28,8 @@ import TimeManagementDashboard from './time-management-dashboard'
 import { generateProfessionalWageSlip } from '@/utils/pdfWageSlipGenerator'
 import { generateSimpleWageSlip } from '@/utils/simplePdfGenerator'
 import { generateMonthlyReport } from '@/utils/pdfMonthlyReportGenerator'
+import ChatPage from '../../chat/simple/ChatPage'
+import UserManagement from './user-management'
 
 export default function AdminDashboard() {
   // Get user from localStorage or use default admin user
@@ -544,6 +546,8 @@ export default function AdminDashboard() {
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="events">Events</TabsTrigger>
                   <TabsTrigger value="assignments">Assignments</TabsTrigger>
+                  <TabsTrigger value="user-management">Team Leaders</TabsTrigger>
+                  <TabsTrigger value="chat">Chat</TabsTrigger>
                 </TabsList>
               </div>
 
@@ -814,6 +818,18 @@ export default function AdminDashboard() {
                 />
               </TabsContent>
 
+              <TabsContent value="user-management">
+                <div className="h-[calc(100vh-200px)] overflow-y-auto">
+                  <UserManagement />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="chat">
+                <div className="h-[calc(100vh-200px)]">
+                  <ChatPage currentUserId={(user && user.id) || 'admin-1'} />
+                </div>
+              </TabsContent>
+
               <TabsContent value="time-management">
                 <TimeManagementDashboard />
               </TabsContent>
@@ -927,7 +943,9 @@ function SidebarContent({ setSidebarOpen, activeTab, setActiveTab }) {
     { id: 'events', label: 'Events', icon: Calendar },
     { id: 'assignments', label: 'Assignments', icon: Users },
     { id: 'time-management', label: 'Time Management', icon: Clock },
+    { id: 'user-management', label: 'Team Leaders', icon: Users },
     { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'chat', label: 'Chat', icon: MessageSquare },
   ]
 
   return (
