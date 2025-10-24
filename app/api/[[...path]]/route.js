@@ -56,6 +56,55 @@ async function handleRoute(request, { params }) {
       return handleCORS(NextResponse.json(data))
     }
 
+    // Create user - POST /api/users
+    if (route === '/users' && method === 'POST') {
+      const body = await request.json()
+      
+      if (!body.name || !body.email) {
+        return handleCORS(NextResponse.json(
+          { error: "Missing required fields: name, email" },
+          { status: 400 }
+        ))
+      }
+
+      // Check if user already exists
+      const { data: existingUser } = await dbOperations.getUserByEmail(body.email)
+      if (existingUser) {
+        return handleCORS(NextResponse.json(
+          { error: "User with this email already exists" },
+          { status: 400 }
+        ))
+      }
+
+      const userData = {
+        id: `tl-${Date.now()}`,
+        name: body.name,
+        email: body.email,
+        phone: body.phone || '',
+        role: body.role || 'team_leader',
+        password: body.password || 'defaultPassword123',
+        isActive: true
+      }
+
+      const { data, error } = await dbOperations.createUser(userData)
+      if (error) {
+        return handleCORS(NextResponse.json({ error: error.message }, { status: 500 }))
+      }
+      return handleCORS(NextResponse.json(data))
+    }
+
+    // Update user - PUT /api/users/[id]
+    if (route.startsWith('/users/') && method === 'PUT') {
+      const userId = path[1]
+      const body = await request.json()
+      
+      const { data, error } = await dbOperations.updateUser(userId, body)
+      if (error) {
+        return handleCORS(NextResponse.json({ error: error.message }, { status: 500 }))
+      }
+      return handleCORS(NextResponse.json(data))
+    }
+
     // Events endpoints - GET /api/events
     if (route === '/events' && method === 'GET') {
       const { data, error } = await dbOperations.getEvents()
