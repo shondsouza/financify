@@ -41,9 +41,9 @@ export const generateMonthlyReport = async (monthData) => {
   // Summary metrics in colored boxes
   const summaryMetrics = [
     { label: 'Total Events', value: monthData.totalEvents, color: primaryColor },
-    { label: 'Total Revenue', value: `₹${monthData.totalRevenue.toLocaleString()}`, color: successColor },
-    { label: 'Total Wages', value: `₹${monthData.totalWages.toLocaleString()}`, color: warningColor },
-    { label: 'Net Profit', value: `₹${(monthData.totalRevenue - monthData.totalWages).toLocaleString()}`, color: successColor }
+    { label: 'Total Revenue', value: `Rs.${monthData.totalRevenue.toLocaleString()}`, color: successColor },
+    { label: 'Total Wages', value: `Rs.${monthData.totalWages.toLocaleString()}`, color: warningColor },
+    { label: 'Net Profit', value: `Rs.${(monthData.totalRevenue - monthData.totalWages).toLocaleString()}`, color: successColor }
   ]
   
   summaryMetrics.forEach((metric, index) => {
@@ -76,9 +76,9 @@ export const generateMonthlyReport = async (monthData) => {
     event.client || 'N/A',
     new Date(event.eventDate || new Date()).toLocaleDateString('en-IN'),
     (event.staffCount || 0).toString(),
-    `₹${(event.revenue || 0).toLocaleString()}`,
-    `₹${(event.wages || 0).toLocaleString()}`,
-    `₹${((event.revenue || 0) - (event.wages || 0)).toLocaleString()}`
+    `Rs.${(event.revenue || 0).toLocaleString()}`,
+    `Rs.${(event.wages || 0).toLocaleString()}`,
+    `Rs.${((event.revenue || 0) - (event.wages || 0)).toLocaleString()}`
   ])
   
   try {
@@ -132,7 +132,7 @@ export const generateMonthlyReport = async (monthData) => {
     tl.name || 'Unknown',
     (tl.eventsAssigned || 0).toString(),
     `${tl.totalHours || 0} hrs`,
-    `₹${(tl.totalEarnings || 0).toLocaleString()}`,
+    `Rs.${(tl.totalEarnings || 0).toLocaleString()}`,
     `${tl.avgRating || 0}/5`,
     tl.efficiency || 'N/A'
   ])

@@ -123,9 +123,9 @@ export const generateProfessionalWageSlip = async (assignment) => {
     [
       'Regular Hours',
       `${regularHours.toFixed(1)}`,
-      `₹${(baseRate/standardHours).toFixed(2)}/hr`,
-      `${regularHours.toFixed(1)} × ₹${(baseRate/standardHours).toFixed(2)}`,
-      `₹${basePay.toFixed(2)}`
+      `Rs.${(baseRate/standardHours).toFixed(2)}/hr`,
+      `${regularHours.toFixed(1)} x Rs.${(baseRate/standardHours).toFixed(2)}`,
+      `Rs.${basePay.toFixed(2)}`
     ]
   ]
   
@@ -133,18 +133,18 @@ export const generateProfessionalWageSlip = async (assignment) => {
     hoursData.push([
       'Overtime Hours',
       `${overtimeHours.toFixed(1)}`,
-      `₹${overtimeRate}/hr`,
-      `${overtimeHours.toFixed(1)} × ₹${overtimeRate}`,
-      `₹${overtimePay.toFixed(2)}`
+      `Rs.${overtimeRate}/hr`,
+      `${overtimeHours.toFixed(1)} x Rs.${overtimeRate}`,
+      `Rs.${overtimePay.toFixed(2)}`
     ])
   }
   
   hoursData.push([
     'TL Commission',
     '-',
-    `₹${tlCommissionPerStaff}/staff`,
-    `${staffCount} × ₹${tlCommissionPerStaff}`,
-    `₹${tlCommission.toFixed(2)}`
+    `Rs.${tlCommissionPerStaff}/staff`,
+    `${staffCount} x Rs.${tlCommissionPerStaff}`,
+    `Rs.${tlCommission.toFixed(2)}`
   ])
   
   // Use try-catch for autoTable in case of plugin issues
@@ -208,15 +208,15 @@ export const generateProfessionalWageSlip = async (assignment) => {
   pdf.setFontSize(12)
   pdf.setFont(undefined, 'normal')
   pdf.text(`Gross Wage (Base + Overtime):`, 25, yPos + 10)
-  pdf.text(`₹${(basePay + overtimePay).toFixed(2)}`, 160, yPos + 10)
+  pdf.text(`Rs.${(basePay + overtimePay).toFixed(2)}`, 160, yPos + 10)
   
   pdf.text(`Team Leader Commission:`, 25, yPos + 20)
-  pdf.text(`₹${tlCommission.toFixed(2)}`, 160, yPos + 20)
+  pdf.text(`Rs.${tlCommission.toFixed(2)}`, 160, yPos + 20)
   
   pdf.setFontSize(16)
   pdf.setFont(undefined, 'bold')
   pdf.text(`TOTAL EARNINGS:`, 25, yPos + 30)
-  pdf.text(`₹${totalEarnings.toFixed(2)}`, 160, yPos + 30)
+  pdf.text(`Rs.${totalEarnings.toFixed(2)}`, 160, yPos + 30)
   
   // Performance Metrics
   yPos += 50
@@ -233,9 +233,9 @@ export const generateProfessionalWageSlip = async (assignment) => {
   const efficiencyRating = actualHours <= 8 ? 'Excellent' : actualHours <= 10 ? 'Good' : 'Overtime'
   
   const metricsInfo = [
-    ['Average Hourly Rate:', `₹${averageHourlyRate.toFixed(2)}/hour`],
+    ['Average Hourly Rate:', `Rs.${averageHourlyRate.toFixed(2)}/hour`],
     ['Efficiency Rating:', efficiencyRating],
-    ['Staff Productivity:', `₹${(totalEarnings/Math.max(staffCount, 1)).toFixed(2)} per staff managed`],
+    ['Staff Productivity:', `Rs.${(totalEarnings/Math.max(staffCount, 1)).toFixed(2)} per staff managed`],
     ['Work Date:', new Date(assignment.loggedAt || new Date()).toLocaleDateString('en-IN')]
   ]
   
