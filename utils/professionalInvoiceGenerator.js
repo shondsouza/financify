@@ -74,7 +74,7 @@ export const generateProfessionalInvoice = async (assignment) => {
     addText('INVOICE', 150, 20, { fontSize: 20, fontStyle: 'bold', align: 'right' })
     addText(`Date Issued: ${issueDate}`, 150, 30, { fontSize: 10, align: 'right' })
     addText(`Invoice Number: ${invoiceNumber}`, 150, 36, { fontSize: 10, align: 'right' })
-    addText(`Amount Due: ₹${total.toFixed(2)}`, 150, 42, { fontSize: 12, fontStyle: 'bold', align: 'right' })
+    addText(`Amount Due: Rs.${total.toFixed(2)}`, 150, 42, { fontSize: 12, fontStyle: 'bold', align: 'right' })
     addText(`Due Date: ${dueDate}`, 150, 48, { fontSize: 10, align: 'right' })
 
     // Billed To Section
@@ -99,9 +99,9 @@ export const generateProfessionalInvoice = async (assignment) => {
     // Base Service
     addText('Event Management Services', 20, yPos, { fontSize: 10, fontStyle: 'bold' })
     addText('Professional event coordination and staff management.', 20, yPos + 6, { fontSize: 9, color: [107, 114, 128] })
-    addText(`₹${baseRate}`, 100, yPos, { fontSize: 10 })
+    addText(`Rs.${baseRate}`, 100, yPos, { fontSize: 10 })
     addText('1', 130, yPos, { fontSize: 10 })
-    addText(`₹${basePay.toFixed(2)}`, 160, yPos, { fontSize: 10 })
+    addText(`Rs.${basePay.toFixed(2)}`, 160, yPos, { fontSize: 10 })
     addText('+Tax', 100, yPos + 6, { fontSize: 8, color: [107, 114, 128] })
     yPos += 15
 
@@ -109,9 +109,9 @@ export const generateProfessionalInvoice = async (assignment) => {
     if (overtimeHours > 0) {
       addText('Overtime Services', 20, yPos, { fontSize: 10, fontStyle: 'bold' })
       addText('Additional hours beyond standard 7-hour duty.', 20, yPos + 6, { fontSize: 9, color: [107, 114, 128] })
-      addText(`₹${overtimeRate}`, 100, yPos, { fontSize: 10 })
+      addText(`Rs.${overtimeRate}`, 100, yPos, { fontSize: 10 })
       addText(overtimeHours.toFixed(1), 130, yPos, { fontSize: 10 })
-      addText(`₹${overtimePay.toFixed(2)}`, 160, yPos, { fontSize: 10 })
+      addText(`Rs.${overtimePay.toFixed(2)}`, 160, yPos, { fontSize: 10 })
       addText('+Tax', 100, yPos + 6, { fontSize: 8, color: [107, 114, 128] })
       yPos += 15
     }
@@ -119,9 +119,9 @@ export const generateProfessionalInvoice = async (assignment) => {
     // Team Leader Commission
     addText('Team Leadership', 20, yPos, { fontSize: 10, fontStyle: 'bold' })
     addText(`Management of ${staffCount} staff members for event execution.`, 20, yPos + 6, { fontSize: 9, color: [107, 114, 128] })
-    addText(`₹${tlCommissionPerStaff}`, 100, yPos, { fontSize: 10 })
+    addText(`Rs.${tlCommissionPerStaff}`, 100, yPos, { fontSize: 10 })
     addText(staffCount.toString(), 130, yPos, { fontSize: 10 })
-    addText(`₹${tlCommission.toFixed(2)}`, 160, yPos, { fontSize: 10 })
+    addText(`Rs.${tlCommission.toFixed(2)}`, 160, yPos, { fontSize: 10 })
     addText('+Tax', 100, yPos + 6, { fontSize: 8, color: [107, 114, 128] })
     yPos += 20
 
@@ -132,15 +132,15 @@ export const generateProfessionalInvoice = async (assignment) => {
     // Summary Section (Right aligned)
     const summaryX = 120
     addText('Subtotal:', summaryX, yPos, { fontSize: 10, align: 'right' })
-    addText(`₹${subtotal.toFixed(2)}`, 190, yPos, { fontSize: 10, align: 'right' })
+    addText(`Rs.${subtotal.toFixed(2)}`, 190, yPos, { fontSize: 10, align: 'right' })
     yPos += 8
 
     addText('Tax (5% GST):', summaryX, yPos, { fontSize: 10, align: 'right' })
-    addText(`+₹${tax.toFixed(2)}`, 190, yPos, { fontSize: 10, align: 'right' })
+    addText(`+Rs.${tax.toFixed(2)}`, 190, yPos, { fontSize: 10, align: 'right' })
     yPos += 8
 
     addText('Total:', summaryX, yPos, { fontSize: 12, fontStyle: 'bold', align: 'right' })
-    addText(`₹${total.toFixed(2)}`, 190, yPos, { fontSize: 12, fontStyle: 'bold', align: 'right' })
+    addText(`Rs.${total.toFixed(2)}`, 190, yPos, { fontSize: 12, fontStyle: 'bold', align: 'right' })
     yPos += 15
 
     // Blue separator line
@@ -149,11 +149,11 @@ export const generateProfessionalInvoice = async (assignment) => {
 
     // Deposit Section
     addText('Deposit Requested:', summaryX, yPos, { fontSize: 10, align: 'right' })
-    addText(`₹${deposit.toFixed(2)}`, 190, yPos, { fontSize: 10, align: 'right' })
+    addText(`Rs.${deposit.toFixed(2)}`, 190, yPos, { fontSize: 10, align: 'right' })
     yPos += 8
 
     addText('Deposit Due:', summaryX, yPos, { fontSize: 10, fontStyle: 'bold', align: 'right' })
-    addText(`₹${deposit.toFixed(2)}`, 190, yPos, { fontSize: 10, fontStyle: 'bold', align: 'right' })
+    addText(`Rs.${deposit.toFixed(2)}`, 190, yPos, { fontSize: 10, fontStyle: 'bold', align: 'right' })
     yPos += 20
 
     // Event Details Section
@@ -277,24 +277,24 @@ export const generateWageSlipInvoice = async (assignment) => {
     // Base Pay
     addText('Base Pay (7hrs)', 20, yPos, { fontSize: 10 })
     addText(regularHours.toFixed(1), 100, yPos, { fontSize: 10 })
-    addText(`₹${baseRate}`, 130, yPos, { fontSize: 10 })
-    addText(`₹${basePay.toFixed(2)}`, 160, yPos, { fontSize: 10 })
+    addText(`Rs.${baseRate}`, 130, yPos, { fontSize: 10 })
+    addText(`Rs.${basePay.toFixed(2)}`, 160, yPos, { fontSize: 10 })
     yPos += 8
 
     // Overtime (if applicable)
     if (overtimeHours > 0) {
       addText('Overtime', 20, yPos, { fontSize: 10 })
       addText(overtimeHours.toFixed(1), 100, yPos, { fontSize: 10 })
-      addText(`₹${overtimeRate}`, 130, yPos, { fontSize: 10 })
-      addText(`₹${overtimePay.toFixed(2)}`, 160, yPos, { fontSize: 10 })
+      addText(`Rs.${overtimeRate}`, 130, yPos, { fontSize: 10 })
+      addText(`Rs.${overtimePay.toFixed(2)}`, 160, yPos, { fontSize: 10 })
       yPos += 8
     }
 
     // TL Commission
     addText('Team Leader Commission', 20, yPos, { fontSize: 10 })
     addText(staffCount.toString(), 100, yPos, { fontSize: 10 })
-    addText(`₹${tlCommissionPerStaff}`, 130, yPos, { fontSize: 10 })
-    addText(`₹${tlCommission.toFixed(2)}`, 160, yPos, { fontSize: 10 })
+    addText(`Rs.${tlCommissionPerStaff}`, 130, yPos, { fontSize: 10 })
+    addText(`Rs.${tlCommission.toFixed(2)}`, 160, yPos, { fontSize: 10 })
     yPos += 15
 
     // Summary
@@ -302,15 +302,15 @@ export const generateWageSlipInvoice = async (assignment) => {
     yPos += 10
 
     addText('Subtotal:', 120, yPos, { fontSize: 10, align: 'right' })
-    addText(`₹${subtotal.toFixed(2)}`, 190, yPos, { fontSize: 10, align: 'right' })
+    addText(`Rs.${subtotal.toFixed(2)}`, 190, yPos, { fontSize: 10, align: 'right' })
     yPos += 8
 
     addText('Tax (5% GST):', 120, yPos, { fontSize: 10, align: 'right' })
-    addText(`+₹${tax.toFixed(2)}`, 190, yPos, { fontSize: 10, align: 'right' })
+    addText(`+Rs.${tax.toFixed(2)}`, 190, yPos, { fontSize: 10, align: 'right' })
     yPos += 8
 
     addText('Total Earnings:', 120, yPos, { fontSize: 12, fontStyle: 'bold', align: 'right' })
-    addText(`₹${total.toFixed(2)}`, 190, yPos, { fontSize: 12, fontStyle: 'bold', align: 'right' })
+    addText(`Rs.${total.toFixed(2)}`, 190, yPos, { fontSize: 12, fontStyle: 'bold', align: 'right' })
 
     // Footer
     yPos = 280

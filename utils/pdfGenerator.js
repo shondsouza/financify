@@ -40,15 +40,15 @@ export const generateWageSlipPDF = async (assignment) => {
   const tlCommission = assignment.tlCommission || ((assignment.staffAssigned || assignment.staffCount || 0) * 25)
   const totalWage = assignment.totalWage || (basePay + overtimePay + tlCommission)
   
-  pdf.text(`Base Pay (₹350 for 7hrs): ₹${basePay.toFixed(2)}`, 30, 195)
+  pdf.text(`Base Pay (Rs.350 for 7hrs): Rs.${basePay.toFixed(2)}`, 30, 195)
   if (overtimePay > 0) {
-    pdf.text(`Overtime Pay (₹50/hr): ₹${overtimePay.toFixed(2)}`, 30, 205)
+    pdf.text(`Overtime Pay (Rs.50/hr): Rs.${overtimePay.toFixed(2)}`, 30, 205)
   }
-  pdf.text(`TL Commission (₹25/staff): ₹${tlCommission.toFixed(2)}`, 30, 215)
+  pdf.text(`TL Commission (Rs.25/staff): Rs.${tlCommission.toFixed(2)}`, 30, 215)
   
   // Total wage
   pdf.setFontSize(14)
-  pdf.text(`Total Wage: ₹${totalWage.toFixed(2)}`, 20, 235)
+  pdf.text(`Total Wage: Rs.${totalWage.toFixed(2)}`, 20, 235)
   
   // Add signature line
   pdf.setFontSize(10)

@@ -115,25 +115,25 @@ export const generateSimpleWageSlip = async (assignment) => {
     
     // Hours breakdown table
     const hoursData = [
-      { type: 'Regular Hours', hours: regularHours, rate: `₹${(baseRate/standardHours).toFixed(2)}/hr`, calculation: `${regularHours.toFixed(1)} × ₹${(baseRate/standardHours).toFixed(2)}`, amount: `₹${basePay.toFixed(2)}` }
+      { type: 'Regular Hours', hours: regularHours, rate: `Rs.${(baseRate/standardHours).toFixed(2)}/hr`, calculation: `${regularHours.toFixed(1)} x Rs.${(baseRate/standardHours).toFixed(2)}`, amount: `Rs.${basePay.toFixed(2)}` }
     ]
     
     if (overtimeHours > 0) {
       hoursData.push({
         type: 'Overtime Hours',
         hours: overtimeHours,
-        rate: `₹${overtimeRate}/hr`,
-        calculation: `${overtimeHours.toFixed(1)} × ₹${overtimeRate}`,
-        amount: `₹${overtimePay.toFixed(2)}`
+        rate: `Rs.${overtimeRate}/hr`,
+        calculation: `${overtimeHours.toFixed(1)} x Rs.${overtimeRate}`,
+        amount: `Rs.${overtimePay.toFixed(2)}`
       })
     }
     
     hoursData.push({
       type: 'TL Commission',
       hours: '-',
-      rate: `₹${tlCommissionPerStaff}/staff`,
-      calculation: `${staffCount} × ₹${tlCommissionPerStaff}`,
-      amount: `₹${tlCommission.toFixed(2)}`
+      rate: `Rs.${tlCommissionPerStaff}/staff`,
+      calculation: `${staffCount} x Rs.${tlCommissionPerStaff}`,
+      amount: `Rs.${tlCommission.toFixed(2)}`
     })
     
     // Draw table manually
@@ -182,15 +182,15 @@ export const generateSimpleWageSlip = async (assignment) => {
     pdf.setFontSize(12)
     pdf.setFont(undefined, 'normal')
     pdf.text(`Gross Wage (Base + Overtime):`, 25, yPos + 10)
-    pdf.text(`₹${(basePay + overtimePay).toFixed(2)}`, 160, yPos + 10)
+    pdf.text(`Rs.${(basePay + overtimePay).toFixed(2)}`, 160, yPos + 10)
     
     pdf.text(`Team Leader Commission:`, 25, yPos + 20)
-    pdf.text(`₹${tlCommission.toFixed(2)}`, 160, yPos + 20)
+    pdf.text(`Rs.${tlCommission.toFixed(2)}`, 160, yPos + 20)
     
     pdf.setFontSize(16)
     pdf.setFont(undefined, 'bold')
     pdf.text(`TOTAL EARNINGS:`, 25, yPos + 30)
-    pdf.text(`₹${totalEarnings.toFixed(2)}`, 160, yPos + 30)
+    pdf.text(`Rs.${totalEarnings.toFixed(2)}`, 160, yPos + 30)
     
     // Performance Metrics
     yPos += 50
@@ -207,9 +207,9 @@ export const generateSimpleWageSlip = async (assignment) => {
     const efficiencyRating = actualHours <= 8 ? 'Excellent' : actualHours <= 10 ? 'Good' : 'Overtime'
     
     const metricsInfo = [
-      ['Average Hourly Rate:', `₹${averageHourlyRate.toFixed(2)}/hour`],
+      ['Average Hourly Rate:', `Rs.${averageHourlyRate.toFixed(2)}/hour`],
       ['Efficiency Rating:', efficiencyRating],
-      ['Staff Productivity:', `₹${(totalEarnings/Math.max(staffCount, 1)).toFixed(2)} per staff managed`],
+      ['Staff Productivity:', `Rs.${(totalEarnings/Math.max(staffCount, 1)).toFixed(2)} per staff managed`],
       ['Work Date:', new Date(assignment.loggedAt || new Date()).toLocaleDateString('en-IN')]
     ]
     
