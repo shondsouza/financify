@@ -13,7 +13,7 @@ export const generateProfessionalWageSlip = async (assignment) => {
   // Color scheme
   const primaryColor = [59, 130, 246] // Blue
   const secondaryColor = [107, 114, 128] // Gray
-  const accentColor = [16, 185, 129] // Green
+  const accentColor = [59, 130, 246] // Blue (same as primary)
   
   // Helper function to add colored rectangle
   const addColoredRect = (x, y, width, height, color) => {
@@ -200,8 +200,8 @@ export const generateProfessionalWageSlip = async (assignment) => {
   yPos += 15
   
   // Summary box
-  addColoredRect(15, yPos, 180, 35, [240, 253, 244])
-  pdf.setDrawColor(16, 185, 129)
+  addColoredRect(15, yPos, 180, 35, [219, 234, 254])
+  pdf.setDrawColor(59, 130, 246)
   pdf.setLineWidth(2)
   pdf.rect(15, yPos, 180, 35)
   
@@ -246,15 +246,6 @@ export const generateProfessionalWageSlip = async (assignment) => {
     pdf.text(value, 80, yPos)
     yPos += 7
   })
-  
-  // Footer
-  yPos = 280
-  addColoredRect(0, yPos, 210, 17, [107, 114, 128])
-  pdf.setTextColor(255, 255, 255)
-  pdf.setFontSize(10)
-  pdf.setFont(undefined, 'normal')
-  pdf.text('This is a system-generated wage slip. For queries, contact admin@smartfinancetracker.com', 105, yPos + 8, { align: 'center' })
-  pdf.text(`Document ID: ${assignment.id || assignment._id || 'N/A'}`, 105, yPos + 13, { align: 'center' })
   
   // Save the PDF
   const teamLeaderName = (assignment.teamLeader?.name || 'Unknown').replace(/\s+/g, '-')

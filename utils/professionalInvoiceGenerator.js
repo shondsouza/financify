@@ -176,15 +176,6 @@ export const generateProfessionalInvoice = async (assignment) => {
     addText('• Payment due within 30 days of invoice date', 20, yPos, { fontSize: 9 })
     yPos += 6
     addText('• Late payments may incur additional charges', 20, yPos, { fontSize: 9 })
-    yPos += 6
-    addText('• For payment queries, contact admin@smartfinancetracker.com', 20, yPos, { fontSize: 9 })
-
-    // Footer
-    yPos = 280
-    addLine(0, yPos, 210, yPos, [107, 114, 128], 1)
-    addColoredRect(0, yPos, 210, 15, [107, 114, 128])
-    addText('Thank you for your business!', 105, yPos + 8, { fontSize: 10, color: [255, 255, 255], align: 'center' })
-    addText(`Document ID: ${assignment.id || 'N/A'} | Generated: ${new Date().toLocaleString('en-IN')}`, 105, yPos + 12, { fontSize: 8, color: [255, 255, 255], align: 'center' })
 
     // Save the PDF
     const teamLeaderName = (assignment.teamLeader?.name || 'Unknown').replace(/\s+/g, '-')
@@ -311,12 +302,6 @@ export const generateWageSlipInvoice = async (assignment) => {
 
     addText('Total Earnings:', 120, yPos, { fontSize: 12, fontStyle: 'bold', align: 'right' })
     addText(`Rs.${total.toFixed(2)}`, 190, yPos, { fontSize: 12, fontStyle: 'bold', align: 'right' })
-
-    // Footer
-    yPos = 280
-    addLine(0, yPos, 210, yPos, [107, 114, 128], 1)
-    addText('This is a system-generated wage slip.', 105, yPos + 8, { fontSize: 9, align: 'center' })
-    addText(`Wage Slip #${wageSlipNumber}`, 105, yPos + 12, { fontSize: 8, align: 'center' })
 
     // Save the PDF
     const teamLeaderName = (assignment.teamLeader?.name || 'Unknown').replace(/\s+/g, '-')

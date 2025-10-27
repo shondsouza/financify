@@ -55,11 +55,6 @@ export const generateWageSlipPDF = async (assignment) => {
   pdf.text('Authorized Signature: _________________', 20, 255)
   pdf.text('Date: _________________', 20, 265)
   
-  // Add footer
-  pdf.setFontSize(8)
-  pdf.text('This is a computer generated wage slip.', 20, 280)
-  pdf.text('For any discrepancies, contact the administration.', 20, 285)
-  
   // Save PDF
   const fileName = `wage-slip-${(assignment.teamLeader?.name || 'unknown').replace(/\s+/g, '-').toLowerCase()}-${assignment.id}.pdf`
   pdf.save(fileName)
