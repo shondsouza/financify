@@ -1,116 +1,139 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { 
-  Clock, Users, DollarSign, FileText, Calendar, MapPin, 
-  Play, Square, CheckCircle, XCircle, AlertTriangle,
-  Download, Edit, Eye
-} from 'lucide-react'
-import { TimeTrackingForm } from './time-tracking-form'
-import { generateProfessionalWageSlip } from '@/utils/pdfWageSlipGenerator'
-import { generateSimpleWageSlip } from '@/utils/simplePdfGenerator'
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Clock,
+  Users,
+  DollarSign,
+  FileText,
+  Calendar,
+  MapPin,
+  Play,
+  Square,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  Download,
+  Edit,
+  Eye,
+} from "lucide-react";
+import { TimeTrackingForm } from "./time-tracking-form";
+import { generateProfessionalWageSlip } from "@/utils/pdfWageSlipGenerator";
+import { generateSimpleWageSlip } from "@/utils/simplePdfGenerator";
 
-export default function AssignmentTimeCard({ assignment, onTimeUpdate, onStatusUpdate }) {
-  const [showTimeModal, setShowTimeModal] = useState(false)
-  const [showDetailsModal, setShowDetailsModal] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+export default function AssignmentTimeCard({
+  assignment,
+  onTimeUpdate,
+  onStatusUpdate,
+}) {
+  const [showTimeModal, setShowTimeModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const getStatusVariant = (status) => {
     switch (status) {
-      case 'assigned':
-        return 'outline'
-      case 'completed':
-        return 'default'
-      case 'paid':
-        return 'default'
+      case "assigned":
+        return "outline";
+      case "completed":
+        return "default";
+      case "paid":
+        return "default";
       default:
-        return 'outline'
+        return "outline";
     }
-  }
+  };
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'assigned':
-        return 'text-blue-700 bg-blue-50 border-blue-200'
-      case 'completed':
-        return 'text-green-700 bg-green-50 border-green-200'
-      case 'paid':
-        return 'text-purple-700 bg-purple-50 border-purple-200'
+      case "assigned":
+        return "text-blue-700 bg-blue-50 border-blue-200";
+      case "completed":
+        return "text-green-700 bg-green-50 border-green-200";
+      case "paid":
+        return "text-purple-700 bg-purple-50 border-purple-200";
       default:
-        return 'text-gray-700 bg-gray-50 border-gray-200'
+        return "text-gray-700 bg-gray-50 border-gray-200";
     }
-  }
+  };
 
   const formatDate = (dateString) => {
     try {
-      return new Date(dateString).toLocaleDateString('en-IN', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      })
+      return new Date(dateString).toLocaleDateString("en-IN", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
     } catch (error) {
-      return 'Invalid Date'
+      return "Invalid Date";
     }
-  }
+  };
 
   const handleTimeSubmit = async (updatedAssignment) => {
-    onTimeUpdate(updatedAssignment)
-    setShowTimeModal(false)
-  }
+    onTimeUpdate(updatedAssignment);
+    setShowTimeModal(false);
+  };
 
   const handleGeneratePDF = async () => {
-    setLoading(true)
-    setError('')
-    
+    setLoading(true);
+    setError("");
+
     try {
       // Try professional generator first, fallback to simple generator
       try {
-        await generateProfessionalWageSlip(assignment)
+        await generateProfessionalWageSlip(assignment);
       } catch (professionalError) {
-        console.warn('Professional PDF generator failed, using simple generator:', professionalError)
-        await generateSimpleWageSlip(assignment)
+        console.warn(
+          "Professional PDF generator failed, using simple generator:",
+          professionalError
+        );
+        await generateSimpleWageSlip(assignment);
       }
     } catch (err) {
-      console.error('Error generating PDF:', err)
-      setError('Failed to generate PDF. Please try again.')
+      console.error("Error generating PDF:", err);
+      setError("Failed to generate PDF. Please try again.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleMarkAsPaid = async () => {
-    setLoading(true)
-    setError('')
-    
+    setLoading(true);
+    setError("");
+
     try {
       const response = await fetch(`/api/assignments/${assignment.id}`, {
-        method: 'PUT',
+        method: "PUT",
         headers: {
-          'Content-Type': 'application/json'
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ status: 'paid' })
-      })
-      
+        body: JSON.stringify({ status: "paid" }),
+      });
+
       if (!response.ok) {
-        throw new Error('Failed to update status')
+        throw new Error("Failed to update status");
       }
-      
-      onStatusUpdate(assignment.id, 'paid')
+
+      onStatusUpdate(assignment.id, "paid");
     } catch (err) {
-      console.error('Error updating status:', err)
-      setError('Failed to update status. Please try again.')
+      console.error("Error updating status:", err);
+      setError("Failed to update status. Please try again.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <>
@@ -128,17 +151,25 @@ export default function AssignmentTimeCard({ assignment, onTimeUpdate, onStatusU
                 </div>
                 <div className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
-                  <span>{formatDate(assignment.event?.eventDate || assignment.eventDate)}</span>
+                  <span>
+                    {formatDate(
+                      assignment.event?.eventDate || assignment.eventDate
+                    )}
+                  </span>
                 </div>
                 <div className="flex items-center gap-1">
                   <MapPin className="h-4 w-4" />
-                  <span>{assignment.event?.location || assignment.location}</span>
+                  <span>
+                    {assignment.event?.location || assignment.location}
+                  </span>
                 </div>
               </div>
             </div>
-            <Badge 
+            <Badge
               variant={getStatusVariant(assignment.status)}
-              className={`${getStatusColor(assignment.status)} font-medium px-3 py-1`}
+              className={`${getStatusColor(
+                assignment.status
+              )} font-medium px-3 py-1`}
             >
               {assignment.status}
             </Badge>
@@ -153,10 +184,10 @@ export default function AssignmentTimeCard({ assignment, onTimeUpdate, onStatusU
                 <span>Team Leader</span>
               </div>
               <p className="font-semibold text-gray-900">
-                {assignment.teamLeader?.name || 'Unknown'}
+                {assignment.teamLeader?.name || "Unknown"}
               </p>
             </div>
-            
+
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <Users className="h-4 w-4" />
@@ -166,7 +197,7 @@ export default function AssignmentTimeCard({ assignment, onTimeUpdate, onStatusU
                 {assignment.staffAssigned || assignment.staffCount || 0} people
               </p>
             </div>
-            
+
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <Clock className="h-4 w-4" />
@@ -191,16 +222,23 @@ export default function AssignmentTimeCard({ assignment, onTimeUpdate, onStatusU
                   <span className="text-sm text-gray-600">Total Wage</span>
                 </div>
                 <span className="font-bold text-lg text-green-800">
-                  ₹{assignment.totalWage.toLocaleString('en-IN')}
+                  ₹{assignment.totalWage.toLocaleString("en-IN")}
                 </span>
               </div>
               <div className="mt-2 text-xs text-gray-600 space-y-1">
-                <div>Base: ₹{assignment.basePay?.toLocaleString('en-IN') || '0'}</div>
+                <div>
+                  Base: ₹{assignment.basePay?.toLocaleString("en-IN") || "0"}
+                </div>
                 {assignment.overtimePay > 0 && (
-                  <div>Overtime: ₹{assignment.overtimePay.toLocaleString('en-IN')}</div>
+                  <div>
+                    Overtime: ₹{assignment.overtimePay.toLocaleString("en-IN")}
+                  </div>
                 )}
                 {assignment.tlCommission > 0 && (
-                  <div>TL Commission: ₹{assignment.tlCommission.toLocaleString('en-IN')}</div>
+                  <div>
+                    TL Commission: ₹
+                    {assignment.tlCommission.toLocaleString("en-IN")}
+                  </div>
                 )}
               </div>
             </div>
@@ -210,24 +248,35 @@ export default function AssignmentTimeCard({ assignment, onTimeUpdate, onStatusU
             <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
               <div className="flex items-center gap-2 mb-2">
                 <Clock className="h-4 w-4 text-blue-600" />
-                <span className="text-sm font-medium text-blue-800">Time Tracking</span>
+                <span className="text-sm font-medium text-blue-800">
+                  Time Tracking
+                </span>
               </div>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div className="flex items-center gap-1">
                   <Play className="h-3 w-3 text-green-600" />
-                  <span>Entry: {new Date(assignment.entryTime).toLocaleTimeString('en-IN', { 
-                    hour: '2-digit', 
-                    minute: '2-digit', 
-                    hour12: false 
-                  })}</span>
+                  <span>
+                    Entry:{" "}
+                    {new Date(assignment.entryTime).toLocaleTimeString(
+                      "en-IN",
+                      {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                      }
+                    )}
+                  </span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Square className="h-3 w-3 text-red-600" />
-                  <span>Exit: {new Date(assignment.exitTime).toLocaleTimeString('en-IN', { 
-                    hour: '2-digit', 
-                    minute: '2-digit', 
-                    hour12: false 
-                  })}</span>
+                  <span>
+                    Exit:{" "}
+                    {new Date(assignment.exitTime).toLocaleTimeString("en-IN", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: false,
+                    })}
+                  </span>
                 </div>
               </div>
             </div>
@@ -247,10 +296,14 @@ export default function AssignmentTimeCard({ assignment, onTimeUpdate, onStatusU
               size="sm"
               className="flex items-center gap-2"
             >
-              {assignment.actualHours ? <Edit className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
-              {assignment.actualHours ? 'Edit Time' : 'Log Time'}
+              {assignment.actualHours ? (
+                <Edit className="h-4 w-4" />
+              ) : (
+                <Clock className="h-4 w-4" />
+              )}
+              {assignment.actualHours ? "Edit Time" : "Log Time"}
             </Button>
-            
+
             {assignment.actualHours && (
               <Button
                 onClick={handleGeneratePDF}
@@ -263,7 +316,7 @@ export default function AssignmentTimeCard({ assignment, onTimeUpdate, onStatusU
                 Generate PDF
               </Button>
             )}
-            
+
             <Button
               onClick={() => setShowDetailsModal(true)}
               variant="outline"
@@ -273,8 +326,8 @@ export default function AssignmentTimeCard({ assignment, onTimeUpdate, onStatusU
               <Eye className="h-4 w-4" />
               View Details
             </Button>
-            
-            {assignment.status === 'completed' && (
+
+            {assignment.status === "completed" && (
               <Button
                 onClick={handleMarkAsPaid}
                 disabled={loading}
@@ -293,7 +346,9 @@ export default function AssignmentTimeCard({ assignment, onTimeUpdate, onStatusU
       <Dialog open={showTimeModal} onOpenChange={setShowTimeModal}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Time Tracking - {assignment.event?.title || assignment.eventTitle}</DialogTitle>
+            <DialogTitle>
+              Time Tracking - {assignment.event?.title || assignment.eventTitle}
+            </DialogTitle>
           </DialogHeader>
           <TimeTrackingForm
             assignment={assignment}
@@ -312,40 +367,70 @@ export default function AssignmentTimeCard({ assignment, onTimeUpdate, onStatusU
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-gray-600">Event</label>
-                <p className="text-gray-900">{assignment.event?.title || assignment.eventTitle}</p>
+                <label className="text-sm font-medium text-gray-600">
+                  Event
+                </label>
+                <p className="text-gray-900">
+                  {assignment.event?.title || assignment.eventTitle}
+                </p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-600">Client</label>
-                <p className="text-gray-900">{assignment.event?.client || assignment.client}</p>
+                <label className="text-sm font-medium text-gray-600">
+                  Client
+                </label>
+                <p className="text-gray-900">
+                  {assignment.event?.client || assignment.client}
+                </p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-600">Date</label>
-                <p className="text-gray-900">{formatDate(assignment.event?.eventDate || assignment.eventDate)}</p>
+                <label className="text-sm font-medium text-gray-600">
+                  Date
+                </label>
+                <p className="text-gray-900">
+                  {formatDate(
+                    assignment.event?.eventDate || assignment.eventDate
+                  )}
+                </p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-600">Location</label>
-                <p className="text-gray-900">{assignment.event?.location || assignment.location}</p>
+                <label className="text-sm font-medium text-gray-600">
+                  Location
+                </label>
+                <p className="text-gray-900">
+                  {assignment.event?.location || assignment.location}
+                </p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-600">Team Leader</label>
-                <p className="text-gray-900">{assignment.teamLeader?.name || 'Unknown'}</p>
+                <label className="text-sm font-medium text-gray-600">
+                  Team Leader
+                </label>
+                <p className="text-gray-900">
+                  {assignment.teamLeader?.name || "Unknown"}
+                </p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-600">Staff Count</label>
-                <p className="text-gray-900">{assignment.staffAssigned || assignment.staffCount || 0}</p>
+                <label className="text-sm font-medium text-gray-600">
+                  Staff Count
+                </label>
+                <p className="text-gray-900">
+                  {assignment.staffAssigned || assignment.staffCount || 0}
+                </p>
               </div>
             </div>
-            
+
             {assignment.adminNotes && (
               <div>
-                <label className="text-sm font-medium text-gray-600">Admin Notes</label>
-                <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{assignment.adminNotes}</p>
+                <label className="text-sm font-medium text-gray-600">
+                  Admin Notes
+                </label>
+                <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">
+                  {assignment.adminNotes}
+                </p>
               </div>
             )}
           </div>
         </DialogContent>
       </Dialog>
     </>
-  )
+  );
 }

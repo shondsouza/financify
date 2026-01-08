@@ -342,6 +342,15 @@ async function handleRoute(request, { params }) {
       return handleCORS(NextResponse.json(data))
     }
 
+    // Get all assignments - GET /api/assignments
+    if (route === '/assignments' && method === 'GET') {
+      const { data, error } = await dbOperations.getAllAssignments()
+      if (error) {
+        return handleCORS(NextResponse.json({ error: error.message }, { status: 500 }))
+      }
+      return handleCORS(NextResponse.json(data))
+    }
+
     // Route not found
     return handleCORS(NextResponse.json(
       { error: `Route ${route} not found` },
