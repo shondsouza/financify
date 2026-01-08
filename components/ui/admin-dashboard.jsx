@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { dbOperations } from '@/lib/supabase'
+import { toast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -1810,16 +1811,58 @@ function AssignmentsTab({ events, formatDate }) {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge 
-                          variant={assignment.status === 'paid' ? 'default' : 'outline'}
-                          className={`${
-                            assignment.status === 'paid' 
-                              ? 'bg-green-500 hover:bg-green-600 text-white' 
-                              : 'text-gray-600 bg-gray-50 border-gray-200'
-                          } capitalize`}
-                        >
-                          {assignment.status}
-                        </Badge>
+                        <div className="flex flex-col items-start gap-2">
+                          <Badge 
+                            variant={assignment.status === 'paid' ? 'default' : 'outline'}
+                            className={`${
+                              assignment.status === 'paid' 
+                                ? 'bg-green-500 hover:bg-green-600 text-white' 
+                                : 'text-gray-600 bg-gray-50 border-gray-200'
+                            } capitalize`}
+                          >
+                            {assignment.status}
+                          </Badge>
+                          {assignment.status !== 'paid' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={async () => {
+                                try {
+                                  const response = await fetch(`/api/assignments/${assignment.id}`, {
+                                    method: 'PUT',
+                                    headers: {
+                                      'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({ status: 'paid' }),
+                                  });
+                                  
+                                  if (!response.ok) {
+                                    throw new Error('Failed to update assignment status');
+                                  }
+                                  
+                                  // Refresh the assignments list
+                                  refetchEvents();
+                                  toast({
+                                    title: "Payment Processed",
+                                    description: `Payment marked as completed for ${assignment.teamLeader?.name || 'team leader'} on ${assignment.eventTitle || 'event'}.`,
+                                    duration: 3000,
+                                  });
+                                } catch (error) {
+                                  console.error('Error updating assignment status:', error);
+                                  toast({
+                                    title: "Error",
+                                    description: "Failed to process payment. Please try again.",
+                                    variant: "destructive",
+                                    duration: 3000,
+                                  });
+                                }
+                              }}
+                              className="h-6 px-2 text-xs mt-1"
+                            >
+                              Pay Now
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

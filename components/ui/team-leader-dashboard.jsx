@@ -510,14 +510,9 @@ export default function TeamLeaderDashboard({ user: propUser }) {
     if (responseData.available === null || !selectedEvent) return
 
     try {
-      // Ensure team leader user exists before submitting response
-      const { data: teamLeaderUser, error: userError } = await dbOperations.ensureTeamLeaderUser()
-      if (userError) {
-        console.error('Failed to ensure team leader user:', userError)
-        console.error('Failed to submit response:', userError.message || 'Team leader user setup failed')
-        return
-      }
-
+      // Use the actual logged-in user instead of default user
+      const teamLeaderUser = user;
+      
       // First, save to database
       const responsePayload = {
         teamLeaderId: teamLeaderUser.id,
