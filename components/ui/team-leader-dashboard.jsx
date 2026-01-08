@@ -9,10 +9,11 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { CheckCircle, XCircle, Calendar, MapPin, Users, DollarSign, Clock, AlertTriangle, ThumbsUp, ThumbsDown, Play, Square, TrendingUp, BarChart3, PieChart, Activity, MessageSquare, RefreshCw } from 'lucide-react'
+import { CheckCircle, XCircle, Calendar, MapPin, Users, DollarSign, Clock, AlertTriangle, ThumbsUp, ThumbsDown, Play, Square, TrendingUp, BarChart3, PieChart, Activity, MessageSquare, RefreshCw, Settings, User, Bell, Mail, Phone, Save, Moon, Sun, Globe } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import NotificationBanner from './notification-banner'
 import ChatPage from '../../chat/simple/ChatPage'
@@ -341,6 +342,47 @@ export default function TeamLeaderDashboard({ user: propUser }) {
   })
   const [selectedAssignment, setSelectedAssignment] = useState(null)
   const [showTimeTracking, setShowTimeTracking] = useState(false)
+  const [activeTab, setActiveTab] = useState('available')
+
+  // Profile and Preferences state
+  const [profileData, setProfileData] = useState({
+    name: '',
+    email: '',
+    phone: ''
+  })
+  const [preferences, setPreferences] = useState({
+    emailNotifications: true,
+    pushNotifications: true,
+    eventReminders: true,
+    earningsAlerts: true,
+    theme: 'light',
+    language: 'en'
+  })
+  const [savingProfile, setSavingProfile] = useState(false)
+  const [savingPreferences, setSavingPreferences] = useState(false)
+  const [profileError, setProfileError] = useState('')
+  const [profileSuccess, setProfileSuccess] = useState('')
+
+  // Load profile data when user is available
+  useEffect(() => {
+    if (user?.id) {
+      setProfileData({
+        name: user.name || '',
+        email: user.email || '',
+        phone: user.phone || ''
+      })
+      
+      // Load preferences from localStorage
+      const savedPreferences = localStorage.getItem(`preferences_${user.id}`)
+      if (savedPreferences) {
+        try {
+          setPreferences(JSON.parse(savedPreferences))
+        } catch (e) {
+          console.error('Failed to load preferences:', e)
+        }
+      }
+    }
+  }, [user])
 
   // Load team leader assignments from database
   const loadAssignments = async () => {
@@ -395,6 +437,23 @@ export default function TeamLeaderDashboard({ user: propUser }) {
       loadAssignments()
     }
   }, [user?.id])
+
+  // Listen for navigation to settings from header dropdown
+  useEffect(() => {
+    const handleNavigateToSettings = () => {
+      setActiveTab('settings')
+    }
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('navigate-to-settings', handleNavigateToSettings)
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('navigate-to-settings', handleNavigateToSettings)
+      }
+    }
+  }, [])
 
   // Set up event listeners for assignment updates
   useEffect(() => {
@@ -625,19 +684,21 @@ export default function TeamLeaderDashboard({ user: propUser }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6">
       {/* Notification Banner */}
-      <NotificationBanner events={events} />
+      {activeTab !== 'settings' && <NotificationBanner events={events} />}
       
       <div className="max-w-7xl mx-auto space-y-8">
-        {/* Header */}
-        <div className="text-center space-y-4 mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-            Team Leader Dashboard
-          </h1>
-          <p className="text-lg text-gray-600">Welcome back, {user.name}! Here's your performance overview.</p>
-        </div>
+        {/* Header - Hide when on settings tab */}
+        {activeTab !== 'settings' && (
+          <>
+            <div className="text-center space-y-4 mb-8">
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                Team Leader Dashboard
+              </h1>
+              <p className="text-lg text-gray-600">Welcome back, {user.name}! Here's your performance overview.</p>
+            </div>
 
-        {/* Enhanced Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Enhanced Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-blue-500 to-blue-600 text-white transform hover:scale-105 transition-all duration-300">
             <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-10 translate-x-10"></div>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -738,10 +799,12 @@ export default function TeamLeaderDashboard({ user: propUser }) {
             </CardContent>
           </Card>
         </div>
+          </>
+        )}
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="available" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid bg-white shadow-md">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid bg-white shadow-md">
             <TabsTrigger value="available" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
               Available Events
             </TabsTrigger>
@@ -753,6 +816,9 @@ export default function TeamLeaderDashboard({ user: propUser }) {
             </TabsTrigger>
             <TabsTrigger value="chat" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
               <span className="inline-flex items-center gap-2"><MessageSquare className="h-4 w-4"/> Chat</span>
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+              <span className="inline-flex items-center gap-2"><Settings className="h-4 w-4"/> Settings</span>
             </TabsTrigger>
           </TabsList>
 
@@ -1209,6 +1275,329 @@ export default function TeamLeaderDashboard({ user: propUser }) {
             <div className="h-[calc(100vh-200px)]">
               <ChatPage currentUserId={user?.id} />
             </div>
+          </TabsContent>
+
+          <TabsContent value="settings" className="space-y-6">
+            <div>
+              <h2 className="text-3xl font-bold text-gray-900">Settings</h2>
+              <p className="text-gray-600">Manage your profile and preferences</p>
+            </div>
+
+            {/* Profile Settings */}
+            <Card className="border-0 shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5 text-blue-600" />
+                  Profile Settings
+                </CardTitle>
+                <CardDescription>Update your personal information</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {profileSuccess && (
+                  <Alert className="border-green-200 bg-green-50">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <AlertDescription className="text-green-800">
+                      {profileSuccess}
+                    </AlertDescription>
+                  </Alert>
+                )}
+                {profileError && (
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>{profileError}</AlertDescription>
+                  </Alert>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="profile-name" className="text-sm font-semibold flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      Full Name
+                    </Label>
+                    <Input
+                      id="profile-name"
+                      value={profileData.name}
+                      onChange={(e) => {
+                        setProfileData({ ...profileData, name: e.target.value })
+                        setProfileError('')
+                        setProfileSuccess('')
+                      }}
+                      className="h-11"
+                      placeholder="Enter your full name"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="profile-email" className="text-sm font-semibold flex items-center gap-2">
+                      <Mail className="h-4 w-4" />
+                      Email Address
+                    </Label>
+                    <Input
+                      id="profile-email"
+                      type="email"
+                      value={profileData.email}
+                      onChange={(e) => {
+                        setProfileData({ ...profileData, email: e.target.value })
+                        setProfileError('')
+                        setProfileSuccess('')
+                      }}
+                      className="h-11"
+                      placeholder="your.email@example.com"
+                      disabled
+                    />
+                    <p className="text-xs text-gray-500">Email cannot be changed</p>
+                  </div>
+
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="profile-phone" className="text-sm font-semibold flex items-center gap-2">
+                      <Phone className="h-4 w-4" />
+                      Phone Number
+                    </Label>
+                    <Input
+                      id="profile-phone"
+                      type="tel"
+                      value={profileData.phone}
+                      onChange={(e) => {
+                        setProfileData({ ...profileData, phone: e.target.value })
+                        setProfileError('')
+                        setProfileSuccess('')
+                      }}
+                      className="h-11"
+                      placeholder="+91 1234567890"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-4 border-t">
+                  <Button
+                    onClick={async () => {
+                      setSavingProfile(true)
+                      setProfileError('')
+                      setProfileSuccess('')
+                      
+                      try {
+                        const response = await fetch(`/api/users/${user.id}`, {
+                          method: 'PUT',
+                          headers: {
+                            'Content-Type': 'application/json',
+                          },
+                          body: JSON.stringify({
+                            name: profileData.name,
+                            phone: profileData.phone
+                          })
+                        })
+
+                        if (!response.ok) {
+                          const errorData = await response.json()
+                          throw new Error(errorData.error || 'Failed to update profile')
+                        }
+
+                        const updatedUser = await response.json()
+                        
+                        // Update local user state
+                        setUser({ ...user, ...updatedUser })
+                        
+                        // Update localStorage
+                        localStorage.setItem('currentUser', JSON.stringify({ ...user, ...updatedUser }))
+                        
+                        setProfileSuccess('Profile updated successfully!')
+                        setTimeout(() => setProfileSuccess(''), 3000)
+                      } catch (error) {
+                        console.error('Profile update error:', error)
+                        setProfileError(error.message || 'Failed to update profile. Please try again.')
+                      } finally {
+                        setSavingProfile(false)
+                      }
+                    }}
+                    disabled={savingProfile}
+                    className="px-8 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
+                  >
+                    {savingProfile ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Profile
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Preferences */}
+            <Card className="border-0 shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Bell className="h-5 w-5 text-purple-600" />
+                  Preferences
+                </CardTitle>
+                <CardDescription>Customize your notification and app preferences</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Notification Preferences */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <Bell className="h-5 w-5 text-gray-600" />
+                    Notification Settings
+                  </h3>
+                  
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="email-notifications" className="text-base font-medium cursor-pointer">
+                          Email Notifications
+                        </Label>
+                        <p className="text-sm text-gray-500">Receive notifications via email</p>
+                      </div>
+                      <Switch
+                        id="email-notifications"
+                        checked={preferences.emailNotifications}
+                        onCheckedChange={(checked) => {
+                          setPreferences({ ...preferences, emailNotifications: checked })
+                        }}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="push-notifications" className="text-base font-medium cursor-pointer">
+                          Push Notifications
+                        </Label>
+                        <p className="text-sm text-gray-500">Receive browser push notifications</p>
+                      </div>
+                      <Switch
+                        id="push-notifications"
+                        checked={preferences.pushNotifications}
+                        onCheckedChange={(checked) => {
+                          setPreferences({ ...preferences, pushNotifications: checked })
+                        }}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="event-reminders" className="text-base font-medium cursor-pointer">
+                          Event Reminders
+                        </Label>
+                        <p className="text-sm text-gray-500">Get reminded about upcoming events</p>
+                      </div>
+                      <Switch
+                        id="event-reminders"
+                        checked={preferences.eventReminders}
+                        onCheckedChange={(checked) => {
+                          setPreferences({ ...preferences, eventReminders: checked })
+                        }}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="earnings-alerts" className="text-base font-medium cursor-pointer">
+                          Earnings Alerts
+                        </Label>
+                        <p className="text-sm text-gray-500">Get notified about earnings updates</p>
+                      </div>
+                      <Switch
+                        id="earnings-alerts"
+                        checked={preferences.earningsAlerts}
+                        onCheckedChange={(checked) => {
+                          setPreferences({ ...preferences, earningsAlerts: checked })
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Appearance Preferences */}
+                <div className="space-y-4 pt-4 border-t">
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <Sun className="h-5 w-5 text-gray-600" />
+                    Appearance
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="theme" className="text-sm font-semibold flex items-center gap-2">
+                        <Moon className="h-4 w-4" />
+                        Theme
+                      </Label>
+                      <select
+                        id="theme"
+                        value={preferences.theme}
+                        onChange={(e) => {
+                          setPreferences({ ...preferences, theme: e.target.value })
+                        }}
+                        className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      >
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
+                        <option value="auto">Auto</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="language" className="text-sm font-semibold flex items-center gap-2">
+                        <Globe className="h-4 w-4" />
+                        Language
+                      </Label>
+                      <select
+                        id="language"
+                        value={preferences.language}
+                        onChange={(e) => {
+                          setPreferences({ ...preferences, language: e.target.value })
+                        }}
+                        className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      >
+                        <option value="en">English</option>
+                        <option value="hi">Hindi</option>
+                        <option value="ta">Tamil</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-4 border-t">
+                  <Button
+                    onClick={async () => {
+                      setSavingPreferences(true)
+                      try {
+                        // Save preferences to localStorage
+                        localStorage.setItem(`preferences_${user.id}`, JSON.stringify(preferences))
+                        
+                        // In a real app, you might want to save to database too
+                        // await fetch(`/api/users/${user.id}/preferences`, { ... })
+                        
+                        setProfileSuccess('Preferences saved successfully!')
+                        setTimeout(() => setProfileSuccess(''), 3000)
+                      } catch (error) {
+                        console.error('Preferences save error:', error)
+                        setProfileError('Failed to save preferences. Please try again.')
+                      } finally {
+                        setSavingPreferences(false)
+                      }
+                    }}
+                    disabled={savingPreferences}
+                    className="px-8 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
+                  >
+                    {savingPreferences ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Preferences
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
 

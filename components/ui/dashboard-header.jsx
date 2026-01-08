@@ -188,7 +188,15 @@ export function DashboardHeader({ user, onLogout, onMenuToggle, notifications = 
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   
-                  <DropdownMenuItem className="cursor-pointer hover:bg-gray-50 p-3">
+                  <DropdownMenuItem 
+                    className="cursor-pointer hover:bg-gray-50 p-3"
+                    onClick={() => {
+                      // Dispatch custom event to navigate to settings tab
+                      if (typeof window !== 'undefined') {
+                        window.dispatchEvent(new CustomEvent('navigate-to-settings'))
+                      }
+                    }}
+                  >
                     <User className="mr-3 h-4 w-4 text-gray-600" />
                     <div>
                       <p className="font-medium">Profile Settings</p>
@@ -196,7 +204,15 @@ export function DashboardHeader({ user, onLogout, onMenuToggle, notifications = 
                     </div>
                   </DropdownMenuItem>
                   
-                  <DropdownMenuItem className="cursor-pointer hover:bg-gray-50 p-3">
+                  <DropdownMenuItem 
+                    className="cursor-pointer hover:bg-gray-50 p-3"
+                    onClick={() => {
+                      // Dispatch custom event to navigate to settings tab
+                      if (typeof window !== 'undefined') {
+                        window.dispatchEvent(new CustomEvent('navigate-to-settings'))
+                      }
+                    }}
+                  >
                     <Settings className="mr-3 h-4 w-4 text-gray-600" />
                     <div>
                       <p className="font-medium">Preferences</p>

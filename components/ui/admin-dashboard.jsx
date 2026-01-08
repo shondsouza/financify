@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -19,7 +20,8 @@ import {
   AlertTriangle, TrendingUp, MapPin, Building, Star, Eye,
   Filter, Download, RefreshCw, BarChart3, PieChart, Search,
   Zap, Target, Award, Activity, Play, Square, Menu, X,
-  Home, Settings, Bell, ChevronRight, ArrowUp, ArrowDown, MessageSquare
+  Home, Settings, Bell, ChevronRight, ArrowUp, ArrowDown, MessageSquare,
+  User, Mail, Phone, Save, Moon, Sun, Globe
 } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart as RechartsPieChart, Cell, AreaChart, Area, Pie } from 'recharts'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
@@ -42,14 +44,62 @@ export default function AdminDashboard() {
       if (savedUser) {
         const parsedUser = JSON.parse(savedUser)
         setUser(parsedUser)
+        setProfileData({
+          name: parsedUser.name || '',
+          email: parsedUser.email || '',
+          phone: parsedUser.phone || ''
+        })
       } else {
         // Fallback to default admin user if not logged in
-        setUser({ id: 'admin-1', name: 'System Admin', email: 'admin@company.com', role: 'admin' })
+        const defaultUser = { id: 'admin-1', name: 'System Admin', email: 'admin@company.com', role: 'admin' }
+        setUser(defaultUser)
+        setProfileData({
+          name: defaultUser.name || '',
+          email: defaultUser.email || '',
+          phone: defaultUser.phone || ''
+        })
       }
     } catch (err) {
       console.warn('Failed to load user from localStorage:', err)
       // Fallback to default admin user
-      setUser({ id: 'admin-1', name: 'System Admin', email: 'admin@company.com', role: 'admin' })
+      const defaultUser = { id: 'admin-1', name: 'System Admin', email: 'admin@company.com', role: 'admin' }
+      setUser(defaultUser)
+      setProfileData({
+        name: defaultUser.name || '',
+        email: defaultUser.email || '',
+        phone: defaultUser.phone || ''
+      })
+    }
+  }, [])
+
+  // Load preferences from localStorage
+  useEffect(() => {
+    if (user?.id) {
+      const savedPreferences = localStorage.getItem(`preferences_${user.id}`)
+      if (savedPreferences) {
+        try {
+          setPreferences(JSON.parse(savedPreferences))
+        } catch (e) {
+          console.error('Failed to load preferences:', e)
+        }
+      }
+    }
+  }, [user?.id])
+
+  // Listen for navigation to settings from header dropdown
+  useEffect(() => {
+    const handleNavigateToSettings = () => {
+      setActiveTab('settings')
+    }
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('navigate-to-settings', handleNavigateToSettings)
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('navigate-to-settings', handleNavigateToSettings)
+      }
     }
   }, [])
 
@@ -77,6 +127,27 @@ export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [teamLeaderPerformance, setTeamLeaderPerformance] = useState([])
+  const [loadingPerformance, setLoadingPerformance] = useState(false)
+
+  // Profile and Preferences state
+  const [profileData, setProfileData] = useState({
+    name: '',
+    email: '',
+    phone: ''
+  })
+  const [preferences, setPreferences] = useState({
+    emailNotifications: true,
+    pushNotifications: true,
+    eventReminders: true,
+    earningsAlerts: true,
+    theme: 'light',
+    language: 'en'
+  })
+  const [savingProfile, setSavingProfile] = useState(false)
+  const [savingPreferences, setSavingPreferences] = useState(false)
+  const [profileError, setProfileError] = useState('')
+  const [profileSuccess, setProfileSuccess] = useState('')
 
   // Form state with validation
   const [formData, setFormData] = useState({
@@ -132,10 +203,25 @@ export default function AdminDashboard() {
         console.warn('Failed to load wage settings', e)
       }
     })()
+    
+    // Load team leader performance data
+    fetchTeamLeaderPerformance()
+    
     const vis = () => { if (document.visibilityState === 'visible') refetchEvents() }
     document.addEventListener('visibilitychange', vis)
     return () => document.removeEventListener('visibilitychange', vis)
   }, [])
+
+  // Reload performance when events change (assignments might have been created/updated)
+  useEffect(() => {
+    if (events.length > 0) {
+      // Add a small delay to ensure assignments are also updated
+      const timer = setTimeout(() => {
+        fetchTeamLeaderPerformance()
+      }, 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [events.length])
 
   // Mock chart data
   const revenueData = [
@@ -164,12 +250,96 @@ export default function AdminDashboard() {
     { date: '2024-03-07', utilization: 87 }
   ]
 
-  const teamLeaderPerformance = [
-    { name: 'Rajesh K.', events: 18, rating: 4.8, earnings: 45000 },
-    { name: 'Priya S.', events: 15, rating: 4.9, earnings: 42000 },
-    { name: 'Amit P.', events: 12, rating: 4.6, earnings: 38000 },
-    { name: 'Sneha M.', events: 14, rating: 4.7, earnings: 40000 }
-  ]
+  // Fetch real team leader performance data (overall/all-time)
+  const fetchTeamLeaderPerformance = async () => {
+    setLoadingPerformance(true)
+    try {
+      // Fetch all team leaders
+      const { data: allUsers, error: usersError } = await dbOperations.getUsers()
+      if (usersError || !allUsers) {
+        console.warn('No users found:', usersError)
+        setTeamLeaderPerformance([])
+        return
+      }
+
+      const teamLeaders = allUsers.filter(user => user.role === 'team_leader' && user.isActive)
+      if (teamLeaders.length === 0) {
+        console.warn('No active team leaders found')
+        setTeamLeaderPerformance([])
+        return
+      }
+
+      // Fetch performance data for each team leader
+      const performanceData = await Promise.all(
+        teamLeaders.map(async (leader) => {
+          try {
+            // Fetch all assignments (overall performance, not just this month)
+            const { data: assignments, error: assignmentsError } = await dbOperations.getTeamLeaderAssignments(leader.id)
+            
+            if (assignmentsError || !assignments) {
+              console.warn(`Failed to fetch assignments for ${leader.name}:`, assignmentsError)
+              return null
+            }
+
+            // Use all assignments for overall performance
+            if (assignments.length === 0) {
+              return null // Skip team leaders with no assignments
+            }
+
+            // Calculate metrics based on all assignments
+            const completedAssignments = assignments.filter(a => 
+              a.status === 'completed' || a.status === 'paid'
+            )
+            
+            const totalEarnings = assignments.reduce((sum, a) => {
+              return sum + (parseFloat(a.totalWage) || 0) + (parseFloat(a.commission) || 0)
+            }, 0)
+
+            const completionRate = assignments.length > 0 
+              ? (completedAssignments.length / assignments.length) * 100 
+              : 0
+
+            // Calculate rating based on completion rate (0-5 scale)
+            // 100% = 5.0, 80% = 4.5, 60% = 4.0, 40% = 3.5, 20% = 3.0, 0% = 2.5
+            const rating = Math.max(2.5, Math.min(5.0, 2.5 + (completionRate / 100) * 2.5))
+
+            return {
+              id: leader.id,
+              name: leader.name,
+              events: assignments.length,
+              rating: Math.round(rating * 10) / 10, // Round to 1 decimal
+              earnings: totalEarnings,
+              completed: completedAssignments.length,
+              completionRate: Math.round(completionRate)
+            }
+          } catch (error) {
+            console.error(`Error calculating performance for ${leader.name}:`, error)
+            return null
+          }
+        })
+      )
+
+      // Filter out null values and sort by earnings (descending), then by completion rate
+      const validPerformance = performanceData
+        .filter(p => p !== null)
+        .sort((a, b) => {
+          // Primary sort: earnings
+          if (b.earnings !== a.earnings) {
+            return b.earnings - a.earnings
+          }
+          // Secondary sort: completion rate
+          return b.completionRate - a.completionRate
+        })
+        .slice(0, 5) // Top 5 performers
+
+      setTeamLeaderPerformance(validPerformance)
+    } catch (error) {
+      console.error('Error fetching team leader performance:', error)
+      setTeamLeaderPerformance([])
+    } finally {
+      setLoadingPerformance(false)
+    }
+  }
 
   // Form validation
   const validateForm = () => {
@@ -436,8 +606,8 @@ export default function AdminDashboard() {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Notification Banner */}
-      <NotificationBanner events={events} />
+      {/* Notification Banner - Hide when on settings tab */}
+      {activeTab !== 'settings' && <NotificationBanner events={events} />}
       
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
@@ -477,6 +647,9 @@ export default function AdminDashboard() {
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto">
           <div className="p-4 lg:p-8 space-y-6 lg:space-y-8 max-w-7xl">
+            {/* Welcome Section - Hide when on settings tab */}
+            {activeTab !== 'settings' && (
+              <>
             {/* Welcome Section */}
             <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-6 lg:p-8 text-white shadow-xl">
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -538,6 +711,8 @@ export default function AdminDashboard() {
                 color="orange"
               />
             </div>
+              </>
+            )}
 
             {/* Main Tabs Content */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -650,11 +825,23 @@ export default function AdminDashboard() {
                         <Award className="h-5 w-5 text-orange-600" />
                         Team Leader Performance
                       </CardTitle>
-                      <CardDescription>Top performing team leaders this month</CardDescription>
+                      <CardDescription>Top performing team leaders (overall performance)</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="space-y-4">
-                        {teamLeaderPerformance.map((leader, index) => (
+                      {loadingPerformance ? (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="text-center">
+                            <RefreshCw className="h-6 w-6 animate-spin text-blue-600 mx-auto mb-2" />
+                            <p className="text-sm text-gray-500">Loading performance data...</p>
+                          </div>
+                        </div>
+                      ) : teamLeaderPerformance.length === 0 ? (
+                        <div className="text-center py-8">
+                          <p className="text-gray-500">No team leader performance data available.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {teamLeaderPerformance.map((leader, index) => (
                           <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                             <div className="flex items-center space-x-3">
                               <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
@@ -673,11 +860,12 @@ export default function AdminDashboard() {
                             </div>
                             <div className="text-right">
                               <p className="font-semibold text-green-600">₹{leader.earnings.toLocaleString('en-IN')}</p>
-                              <p className="text-xs text-gray-500">This month</p>
+                              <p className="text-xs text-gray-500">Total earnings</p>
                             </div>
                           </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </div>
@@ -835,6 +1023,325 @@ export default function AdminDashboard() {
               </TabsContent>
 
               <TabsContent value="settings" className="space-y-6">
+                <div>
+                  <h2 className="text-3xl font-bold text-gray-900 mb-2">Settings</h2>
+                  <p className="text-gray-600">Manage your profile, preferences, and system settings</p>
+                </div>
+
+                {/* Profile Settings */}
+                <Card className="shadow-lg border-0">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <User className="h-5 w-5 text-blue-600" />
+                      Profile Settings
+                    </CardTitle>
+                    <CardDescription>Update your personal information</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {profileSuccess && (
+                      <Alert className="border-green-200 bg-green-50">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <AlertDescription className="text-green-800">
+                          {profileSuccess}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                    {profileError && (
+                      <Alert variant="destructive">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription>{profileError}</AlertDescription>
+                      </Alert>
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="admin-profile-name" className="text-sm font-semibold flex items-center gap-2">
+                          <User className="h-4 w-4" />
+                          Full Name
+                        </Label>
+                        <Input
+                          id="admin-profile-name"
+                          value={profileData.name}
+                          onChange={(e) => {
+                            setProfileData({ ...profileData, name: e.target.value })
+                            setProfileError('')
+                            setProfileSuccess('')
+                          }}
+                          className="h-11"
+                          placeholder="Enter your full name"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="admin-profile-email" className="text-sm font-semibold flex items-center gap-2">
+                          <Mail className="h-4 w-4" />
+                          Email Address
+                        </Label>
+                        <Input
+                          id="admin-profile-email"
+                          type="email"
+                          value={profileData.email}
+                          onChange={(e) => {
+                            setProfileData({ ...profileData, email: e.target.value })
+                            setProfileError('')
+                            setProfileSuccess('')
+                          }}
+                          className="h-11"
+                          placeholder="your.email@example.com"
+                          disabled
+                        />
+                        <p className="text-xs text-gray-500">Email cannot be changed</p>
+                      </div>
+
+                      <div className="space-y-2 md:col-span-2">
+                        <Label htmlFor="admin-profile-phone" className="text-sm font-semibold flex items-center gap-2">
+                          <Phone className="h-4 w-4" />
+                          Phone Number
+                        </Label>
+                        <Input
+                          id="admin-profile-phone"
+                          type="tel"
+                          value={profileData.phone}
+                          onChange={(e) => {
+                            setProfileData({ ...profileData, phone: e.target.value })
+                            setProfileError('')
+                            setProfileSuccess('')
+                          }}
+                          className="h-11"
+                          placeholder="+91 1234567890"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end pt-4 border-t">
+                      <Button
+                        onClick={async () => {
+                          setSavingProfile(true)
+                          setProfileError('')
+                          setProfileSuccess('')
+                          
+                          try {
+                            const response = await fetch(`/api/users/${user?.id}`, {
+                              method: 'PUT',
+                              headers: {
+                                'Content-Type': 'application/json',
+                              },
+                              body: JSON.stringify({
+                                name: profileData.name,
+                                phone: profileData.phone
+                              })
+                            })
+
+                            if (!response.ok) {
+                              const errorData = await response.json()
+                              throw new Error(errorData.error || 'Failed to update profile')
+                            }
+
+                            const updatedUser = await response.json()
+                            
+                            // Update local user state
+                            setUser({ ...user, ...updatedUser })
+                            
+                            // Update localStorage
+                            localStorage.setItem('currentUser', JSON.stringify({ ...user, ...updatedUser }))
+                            
+                            setProfileSuccess('Profile updated successfully!')
+                            setTimeout(() => setProfileSuccess(''), 3000)
+                          } catch (error) {
+                            console.error('Profile update error:', error)
+                            setProfileError(error.message || 'Failed to update profile. Please try again.')
+                          } finally {
+                            setSavingProfile(false)
+                          }
+                        }}
+                        disabled={savingProfile}
+                        className="px-8 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
+                      >
+                        {savingProfile ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="h-4 w-4 mr-2" />
+                            Save Profile
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Preferences */}
+                <Card className="shadow-lg border-0">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Bell className="h-5 w-5 text-purple-600" />
+                      Preferences
+                    </CardTitle>
+                    <CardDescription>Customize your notification and app preferences</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* Notification Preferences */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                        <Bell className="h-5 w-5 text-gray-600" />
+                        Notification Settings
+                      </h3>
+                      
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="admin-email-notifications" className="text-base font-medium cursor-pointer">
+                              Email Notifications
+                            </Label>
+                            <p className="text-sm text-gray-500">Receive notifications via email</p>
+                          </div>
+                          <Switch
+                            id="admin-email-notifications"
+                            checked={preferences.emailNotifications}
+                            onCheckedChange={(checked) => {
+                              setPreferences({ ...preferences, emailNotifications: checked })
+                            }}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="admin-push-notifications" className="text-base font-medium cursor-pointer">
+                              Push Notifications
+                            </Label>
+                            <p className="text-sm text-gray-500">Receive browser push notifications</p>
+                          </div>
+                          <Switch
+                            id="admin-push-notifications"
+                            checked={preferences.pushNotifications}
+                            onCheckedChange={(checked) => {
+                              setPreferences({ ...preferences, pushNotifications: checked })
+                            }}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="admin-event-reminders" className="text-base font-medium cursor-pointer">
+                              Event Reminders
+                            </Label>
+                            <p className="text-sm text-gray-500">Get reminded about upcoming events</p>
+                          </div>
+                          <Switch
+                            id="admin-event-reminders"
+                            checked={preferences.eventReminders}
+                            onCheckedChange={(checked) => {
+                              setPreferences({ ...preferences, eventReminders: checked })
+                            }}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="admin-earnings-alerts" className="text-base font-medium cursor-pointer">
+                              Earnings Alerts
+                            </Label>
+                            <p className="text-sm text-gray-500">Get notified about earnings updates</p>
+                          </div>
+                          <Switch
+                            id="admin-earnings-alerts"
+                            checked={preferences.earningsAlerts}
+                            onCheckedChange={(checked) => {
+                              setPreferences({ ...preferences, earningsAlerts: checked })
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Appearance Preferences */}
+                    <div className="space-y-4 pt-4 border-t">
+                      <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                        <Sun className="h-5 w-5 text-gray-600" />
+                        Appearance
+                      </h3>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <Label htmlFor="admin-theme" className="text-sm font-semibold flex items-center gap-2">
+                            <Moon className="h-4 w-4" />
+                            Theme
+                          </Label>
+                          <select
+                            id="admin-theme"
+                            value={preferences.theme}
+                            onChange={(e) => {
+                              setPreferences({ ...preferences, theme: e.target.value })
+                            }}
+                            className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                          >
+                            <option value="light">Light</option>
+                            <option value="dark">Dark</option>
+                            <option value="auto">Auto</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="admin-language" className="text-sm font-semibold flex items-center gap-2">
+                            <Globe className="h-4 w-4" />
+                            Language
+                          </Label>
+                          <select
+                            id="admin-language"
+                            value={preferences.language}
+                            onChange={(e) => {
+                              setPreferences({ ...preferences, language: e.target.value })
+                            }}
+                            className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                          >
+                            <option value="en">English</option>
+                            <option value="hi">Hindi</option>
+                            <option value="ta">Tamil</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end pt-4 border-t">
+                      <Button
+                        onClick={async () => {
+                          setSavingPreferences(true)
+                          try {
+                            // Save preferences to localStorage
+                            localStorage.setItem(`preferences_${user?.id}`, JSON.stringify(preferences))
+                            
+                            setProfileSuccess('Preferences saved successfully!')
+                            setTimeout(() => setProfileSuccess(''), 3000)
+                          } catch (error) {
+                            console.error('Preferences save error:', error)
+                            setProfileError('Failed to save preferences. Please try again.')
+                          } finally {
+                            setSavingPreferences(false)
+                          }
+                        }}
+                        disabled={savingPreferences}
+                        className="px-8 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
+                      >
+                        {savingPreferences ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="h-4 w-4 mr-2" />
+                            Save Preferences
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Wage Settings */}
                 <Card className="shadow-lg border-0">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
