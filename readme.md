@@ -11,6 +11,7 @@
 - [Overview](#-overview)
 - [Features](#-features)
 - [Technology Stack](#-technology-stack)
+- [Project Structure](#-project-structure)
 - [Quick Start](#-quick-start)
 - [Database Setup](#-database-setup)
 - [Usage Guide](#-usage-guide)
@@ -69,6 +70,32 @@ Wage Structure:
 - **Real-time Updates**: Live status changes without page refresh
 - **Accessibility**: Keyboard navigation and screen reader friendly
 
+## 📁 Project Structure
+
+The project is organized into the following main directories:
+
+```
+├── app/               # Next.js app router pages
+├── components/        # Reusable UI components
+├── db/                # Database schemas and migrations
+├── docs/              # Documentation files
+├── features/          # Feature-specific modules
+├── hooks/             # React hooks
+├── lib/               # Utility libraries and helper functions
+├── public/            # Static assets
+├── tests/             # Test files
+└── utils/             # Utility functions
+```
+
+### Documentation Organization
+- **Feature Guides**: Chat, PDF generation, User Management, Time Tracking
+- **Setup Guides**: Installation and configuration instructions
+- **Troubleshooting**: Issue resolution guides
+
+### Database Organization
+- **Core Schema**: `database_setup.sql` - Main application schema
+- **Feature Schemas**: Separate migration files for each feature
+
 ## 🛠 Technology Stack
 
 ### **Frontend**
@@ -108,16 +135,18 @@ yarn install
 ```
 
 ### **3. Environment Setup**
-Create `.env` file with your Supabase credentials:
+Create `.env.local` file with your Supabase credentials:
 ```env
 # Supabase Configuration
-NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
 # App Configuration  
 NEXT_PUBLIC_BASE_URL=http://localhost:3000
 CORS_ORIGINS=*
 ```
+
+> **Note**: The `.env.local` file is included in `.gitignore` and should NOT be committed to the repository. For team development, use the provided `.env.example` file as a template for required environment variables.
 
 ### **4. Database Setup**
 Run the SQL script in your Supabase SQL Editor:
@@ -154,7 +183,7 @@ Team Leader Account:
 
 2. **Run Database Schema**
    ```sql
-   -- Copy and paste content from /database_setup.sql
+   -- Copy and paste content from /db/database_setup.sql
    -- This creates all required tables with sample data
    ```
 

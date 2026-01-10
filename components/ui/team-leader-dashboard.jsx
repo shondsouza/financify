@@ -16,7 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { CheckCircle, XCircle, Calendar, MapPin, Users, DollarSign, Clock, AlertTriangle, ThumbsUp, ThumbsDown, Play, Square, TrendingUp, BarChart3, PieChart, Activity, MessageSquare, RefreshCw, Settings, User, Bell, Mail, Phone, Save, Moon, Sun, Globe } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import NotificationBanner from './notification-banner'
-import ChatPage from '../../chat/simple/ChatPage'
+import ChatPage from '../../features/chat/simple/ChatPage'
 
 // Dynamically import Recharts components to avoid SSR issues
 const RechartsComponents = dynamic(() => import('recharts'), { 

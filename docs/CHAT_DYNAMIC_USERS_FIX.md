@@ -35,7 +35,7 @@ const availableUsers = [
 
 ## 🔧 Technical Changes
 
-### **File**: `chat/simple/FullPageChat.jsx`
+### **File**: `features/chat/simple/FullPageChat.jsx`
 
 #### **1. Added State for Dynamic Users**
 ```javascript
@@ -289,7 +289,7 @@ User clicks → Start conversation
 ---
 
 **Status**: ✅ Implemented and Working
-**File Modified**: `chat/simple/FullPageChat.jsx`
+**File Modified**: `features/chat/simple/FullPageChat.jsx`
 **API Used**: `GET /api/users`
 **Version**: 1.0.0
 **Date**: October 2025

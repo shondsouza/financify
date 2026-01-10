@@ -31,7 +31,7 @@ import TimeManagementDashboard from './time-management-dashboard'
 import { generateProfessionalWageSlip } from '@/utils/pdfWageSlipGenerator'
 import { generateSimpleWageSlip } from '@/utils/simplePdfGenerator'
 import { generateMonthlyReport } from '@/utils/pdfMonthlyReportGenerator'
-import ChatPage from '../../chat/simple/ChatPage'
+import ChatPage from '../../features/chat/simple/ChatPage'
 import UserManagement from './user-management'
 
 export default function AdminDashboard() {
